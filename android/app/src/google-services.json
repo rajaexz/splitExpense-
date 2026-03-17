@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "374774472646",
+    "project_id": "jobcrak",
+    "storage_bucket": "jobcrak.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:374774472646:android:a5048d8b78ec1d751a5cc7",
+        "android_client_info": {
+          "package_name": "com.example.jobcrak"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "374774472646-72vm2lcq59u88d9ti9ve0bs8rj8i9acq.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBDG6w2vayEWusNPqiKx17_ssjlrWB31sI"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "374774472646-72vm2lcq59u88d9ti9ve0bs8rj8i9acq.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "374774472646-v8u35pjs57vuaj5ph1uocb3ki233bttn.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.jobcrak"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

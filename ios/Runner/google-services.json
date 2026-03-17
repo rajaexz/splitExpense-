@@ -1,0 +1,39 @@
+{
+  "project_info": {
+    "project_number": "493504389166",
+    "project_id": "chatter-dc034",
+    "storage_bucket": "chatter-dc034.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:493504389166:android:a986b6b83503dc3c107fbf",
+        "android_client_info": {
+          "package_name": "com.retrytech.chatter"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "493504389166-cubed85bgdv67302kkfedp0esajvfpu0.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHNyG3MKwz5FPkTAxItOkxE5fce865Hvk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "493504389166-cubed85bgdv67302kkfedp0esajvfpu0.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

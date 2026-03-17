@@ -1,0 +1,71 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Helper function to check file size (50MB for media, 100MB for videos)
+    function isValidSize(maxSize) {
+      return request.resource.size < maxSize;
+    }
+    
+    // Group media files (images, videos, etc.)
+    match /groups/{groupId}/media/{fileName} {
+      // Group members can read media
+      allow read: if isAuthenticated();
+      
+      // Group members can upload media (50MB limit)
+      allow write: if isAuthenticated() && 
+        isValidSize(50 * 1024 * 1024) &&
+        (request.resource.contentType.matches('image/.*') ||
+         request.resource.contentType.matches('video/.*'));
+    }
+    
+    // Group broadcast videos
+    match /groups/{groupId}/broadcasts/{fileName} {
+      // Group members can read broadcasts
+      allow read: if isAuthenticated();
+      
+      // Group members can upload broadcasts (100MB limit)
+      allow write: if isAuthenticated() && 
+        isValidSize(100 * 1024 * 1024) &&
+        request.resource.contentType.matches('video/.*');
+    }
+    
+    // Shared gallery images - owner uploads, shared friends can read
+    match /gallery_shares/{shareId}/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        isValidSize(10 * 1024 * 1024) && // 10MB per image
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // Group cover/avatar images (uploaded when creating group)
+    match /group_images/{fileName} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && 
+        isValidSize(5 * 1024 * 1024) &&
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // User profile images
+    match /users/{userId}/profile/{fileName} {
+      // Anyone authenticated can read
+      allow read: if isAuthenticated();
+      
+      // Users can only upload their own profile image
+      allow write: if isAuthenticated() && 
+        userId == request.auth.uid &&
+        isValidSize(5 * 1024 * 1024) && // 5MB limit
+        request.resource.contentType.matches('image/.*');
+    }
+    
+    // Default: deny all other access
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
+

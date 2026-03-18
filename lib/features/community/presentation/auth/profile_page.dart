@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
@@ -14,6 +13,7 @@ import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../data/models/user_model.dart';
 import '../../../../application/auth/auth_cubit.dart';
+import 'widgets/auth_widgets.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({Key? key}) : super(key: key);
@@ -109,8 +109,10 @@ class _ProfileContentState extends State<_ProfileContent> {
   bool _isEditMode = false;
   late TextEditingController _nameController;
   late TextEditingController _phoneController;
+  late TextEditingController _upiController;
   File? _selectedPhoto;
   String? _profilePhone; // From Firestore (when user didn't login with phone)
+  String? _profileUpiId; // From Firestore
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
 
@@ -121,9 +123,11 @@ class _ProfileContentState extends State<_ProfileContent> {
     super.initState();
     _nameController = TextEditingController(text: widget.user.name ?? '');
     _phoneController = TextEditingController();
+    _upiController = TextEditingController();
     if (_canEditPhone) {
       _loadProfilePhone();
     }
+    _loadProfileUpiId();
   }
 
   Future<void> _loadProfilePhone() async {
@@ -136,6 +140,16 @@ class _ProfileContentState extends State<_ProfileContent> {
     }
   }
 
+  Future<void> _loadProfileUpiId() async {
+    final upiId = await widget.authCubit.getUpiId(widget.user.uid);
+    if (mounted) {
+      setState(() {
+        _profileUpiId = upiId;
+        _upiController.text = upiId ?? '';
+      });
+    }
+  }
+
   @override
   void didUpdateWidget(covariant _ProfileContent oldWidget) {
     super.didUpdateWidget(oldWidget);
@@ -144,6 +158,9 @@ class _ProfileContentState extends State<_ProfileContent> {
       if (_canEditPhone && oldWidget.user.uid == widget.user.uid) {
         _loadProfilePhone();
       }
+      if (oldWidget.user.uid == widget.user.uid) {
+        _loadProfileUpiId();
+      }
     }
   }
 
@@ -151,6 +168,7 @@ class _ProfileContentState extends State<_ProfileContent> {
   void dispose() {
     _nameController.dispose();
     _phoneController.dispose();
+    _upiController.dispose();
     super.dispose();
   }
 
@@ -208,9 +226,11 @@ class _ProfileContentState extends State<_ProfileContent> {
 
     final name = _nameController.text.trim();
     final phone = _canEditPhone ? _phoneController.text.trim() : null;
+    final upiId = _upiController.text.trim();
     final hasChanges = name != (widget.user.name ?? '') ||
         _selectedPhoto != null ||
-        (phone != null && phone != (_profilePhone ?? ''));
+        (phone != null && phone != (_profilePhone ?? '')) ||
+        upiId != (_profileUpiId ?? '');
     if (!hasChanges) {
       setState(() {
         _isEditMode = false;
@@ -223,6 +243,7 @@ class _ProfileContentState extends State<_ProfileContent> {
       name: name.isEmpty ? null : name,
       photoFile: _selectedPhoto,
       phone: _canEditPhone ? phone : null,
+      upiId: upiId.isEmpty ? null : upiId,
     );
   }
 
@@ -231,6 +252,7 @@ class _ProfileContentState extends State<_ProfileContent> {
       _isEditMode = false;
       _nameController.text = widget.user.name ?? '';
       _phoneController.text = _profilePhone ?? '';
+      _upiController.text = _profileUpiId ?? '';
       _selectedPhoto = null;
     });
   }
@@ -256,6 +278,9 @@ class _ProfileContentState extends State<_ProfileContent> {
                   ? null
                   : _phoneController.text.trim();
             }
+            _profileUpiId = _upiController.text.trim().isEmpty
+                ? null
+                : _upiController.text.trim();
           });
         }
       },
@@ -272,69 +297,13 @@ class _ProfileContentState extends State<_ProfileContent> {
       child: Column(
         children: [
           const SizedBox(height: AppDimensions.margin16),
-          GestureDetector(
+          ProfileAvatarPicker(
+            photoUrl: widget.user.photoUrl,
+            localFile: _selectedPhoto,
+            initial: initial,
+            radius: 50,
+            showCameraOverlay: true,
             onTap: _showImageSourcePicker,
-            child: Stack(
-              children: [
-                CircleAvatar(
-                  radius: 50,
-                  backgroundColor: AppColors.primaryGreen,
-                  child: _selectedPhoto != null
-                      ? ClipOval(
-                          child: Image.file(
-                            _selectedPhoto!,
-                            width: 100,
-                            height: 100,
-                            fit: BoxFit.cover,
-                          ),
-                        )
-                      : widget.user.photoUrl != null &&
-                              widget.user.photoUrl!.isNotEmpty
-                          ? ClipOval(
-                              child: CachedNetworkImage(
-                                imageUrl: widget.user.photoUrl!,
-                                width: 100,
-                                height: 100,
-                                fit: BoxFit.cover,
-                                placeholder: (_, __) =>
-                                    const CircularProgressIndicator(),
-                                errorWidget: (_, __, ___) => Text(
-                                  initial,
-                                  style: const TextStyle(
-                                    fontSize: AppFonts.fontSize36,
-                                    color: AppColors.textWhite,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            )
-                          : Text(
-                              initial,
-                              style: const TextStyle(
-                                fontSize: AppFonts.fontSize36,
-                                color: AppColors.textWhite,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                ),
-                Positioned(
-                  right: 0,
-                  bottom: 0,
-                  child: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: const BoxDecoration(
-                      color: AppColors.primaryGreen,
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(
-                      Icons.camera_alt,
-                      color: AppColors.textWhite,
-                      size: 20,
-                    ),
-                  ),
-                ),
-              ],
-            ),
           ),
           const SizedBox(height: 8),
           Text(
@@ -360,6 +329,13 @@ class _ProfileContentState extends State<_ProfileContent> {
               hint: '+92 300 1234567',
             ),
           ],
+          const SizedBox(height: 16),
+          AppTextField(
+            label: 'UPI ID',
+            controller: _upiController,
+            keyboardType: TextInputType.text,
+            hint: 'yourname@upi',
+          ),
           const SizedBox(height: 24),
           Row(
             children: [
@@ -394,35 +370,11 @@ class _ProfileContentState extends State<_ProfileContent> {
     return Column(
       children: [
         const SizedBox(height: AppDimensions.margin16),
-        CircleAvatar(
+        ProfileAvatarPicker(
+          photoUrl: user.photoUrl,
+          initial: initial,
           radius: 50,
-          backgroundColor: AppColors.primaryGreen,
-          child: user.photoUrl != null && user.photoUrl!.isNotEmpty
-              ? ClipOval(
-                  child: CachedNetworkImage(
-                    imageUrl: user.photoUrl!,
-                    width: 100,
-                    height: 100,
-                    fit: BoxFit.cover,
-                    placeholder: (_, __) => const CircularProgressIndicator(),
-                    errorWidget: (_, __, ___) => Text(
-                      initial,
-                      style: const TextStyle(
-                        fontSize: AppFonts.fontSize36,
-                        color: AppColors.textWhite,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                )
-              : Text(
-                  initial,
-                  style: const TextStyle(
-                    fontSize: AppFonts.fontSize36,
-                    color: AppColors.textWhite,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
+          showCameraOverlay: false,
         ),
         const SizedBox(height: 12),
         Text(
@@ -433,21 +385,28 @@ class _ProfileContentState extends State<_ProfileContent> {
           ),
         ),
         const SizedBox(height: AppDimensions.margin32),
-        _ProfileInfoCard(
+        ProfileInfoCard(
           isDark: widget.isDark,
           icon: Icons.email_outlined,
           label: 'Email',
           value: user.email.isNotEmpty ? user.email : 'Not set',
         ),
         const SizedBox(height: AppDimensions.margin12),
-        _ProfileInfoCard(
+        ProfileInfoCard(
           isDark: widget.isDark,
           icon: Icons.phone_outlined,
           label: 'Phone',
           value: user.phoneNumber ?? _profilePhone ?? 'Not set',
         ),
         const SizedBox(height: AppDimensions.margin12),
-        _ProfileInfoCard(
+        ProfileInfoCard(
+          isDark: widget.isDark,
+          icon: Icons.account_balance_wallet_outlined,
+          label: 'UPI ID',
+          value: _profileUpiId ?? 'Not set',
+        ),
+        const SizedBox(height: AppDimensions.margin12),
+        ProfileInfoCard(
           isDark: widget.isDark,
           icon: Icons.badge_outlined,
           label: 'User ID',
@@ -521,80 +480,6 @@ class _ProfileContentState extends State<_ProfileContent> {
           ),
         ),
       ],
-    );
-  }
-}
-
-class _ProfileInfoCard extends StatelessWidget {
-  final bool isDark;
-  final IconData icon;
-  final String label;
-  final String value;
-  final bool showCopy;
-  final VoidCallback? onCopy;
-
-  const _ProfileInfoCard({
-    required this.isDark,
-    required this.icon,
-    required this.label,
-    required this.value,
-    this.showCopy = false,
-    this.onCopy,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(AppDimensions.padding16),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.backgroundGrey,
-        borderRadius: BorderRadius.circular(AppDimensions.radius12),
-        border: Border.all(
-          color: isDark ? AppColors.borderGreyDark : AppColors.borderGrey,
-          width: 1,
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(
-            icon,
-            color: AppColors.primaryGreen,
-            size: 24,
-          ),
-          const SizedBox(width: AppDimensions.margin16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: AppFonts.fontSize12,
-                    color: AppColors.textGrey,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: AppFonts.fontSize14,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? AppColors.textWhite : AppColors.textBlack,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ],
-            ),
-          ),
-          if (showCopy && onCopy != null)
-            IconButton(
-              icon: const Icon(Icons.copy_outlined, size: 20),
-              onPressed: onCopy,
-              color: AppColors.primaryGreen,
-            ),
-        ],
-      ),
     );
   }
 }

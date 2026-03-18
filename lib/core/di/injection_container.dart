@@ -18,6 +18,7 @@ import '../../features/community/data/datasources/notification_remote_datasource
 import '../../features/community/data/datasources/broadcast_video_datasource.dart';
 import '../../features/community/data/datasources/expense_remote_datasource.dart';
 import '../../features/community/data/datasources/shared_gallery_datasource.dart';
+import '../../features/community/data/datasources/saved_contacts_datasource.dart';
 import '../../features/community/data/repositories/group_repository_impl.dart';
 import '../../features/community/data/repositories/message_repository_impl.dart';
 import '../../domain/group_repository.dart';
@@ -130,6 +131,13 @@ Future<void> init() async {
       () => SharedGalleryDataSourceImpl(
         firestore: sl<FirebaseFirestore>(),
         imageUpload: sl<ImageUploadService>(),
+        auth: sl<firebase_auth.FirebaseAuth>(),
+      ),
+    );
+
+    sl.registerLazySingleton<SavedContactsDataSource>(
+      () => SavedContactsDataSourceImpl(
+        firestore: sl<FirebaseFirestore>(),
         auth: sl<firebase_auth.FirebaseAuth>(),
       ),
     );

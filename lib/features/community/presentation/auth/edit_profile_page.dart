@@ -4,13 +4,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
 import 'package:image_picker/image_picker.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/widgets/app_button.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/di/injection_container.dart' as di;
+import 'widgets/auth_widgets.dart';
 import '../../../../data/models/user_model.dart';
+import '../../../../domain/auth_repository.dart';
 import '../../../../application/auth/auth_cubit.dart';
 
 class EditProfilePage extends StatefulWidget {
@@ -24,7 +26,9 @@ class EditProfilePage extends StatefulWidget {
 
 class _EditProfilePageState extends State<EditProfilePage> {
   late TextEditingController _nameController;
+  late TextEditingController _upiController;
   File? _selectedPhoto;
+  String _initialUpiId = '';
   final _formKey = GlobalKey<FormState>();
   final _imagePicker = ImagePicker();
 
@@ -32,11 +36,22 @@ class _EditProfilePageState extends State<EditProfilePage> {
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.user.name ?? '');
+    _upiController = TextEditingController();
+    _loadUpiId();
+  }
+
+  Future<void> _loadUpiId() async {
+    final upiId = await di.sl<AuthRepository>().getUpiId(widget.user.uid);
+    if (mounted) {
+      _initialUpiId = upiId ?? '';
+      _upiController.text = _initialUpiId;
+    }
   }
 
   @override
   void dispose() {
     _nameController.dispose();
+    _upiController.dispose();
     super.dispose();
   }
 
@@ -93,7 +108,10 @@ class _EditProfilePageState extends State<EditProfilePage> {
     if (!_formKey.currentState!.validate()) return;
 
     final name = _nameController.text.trim();
-    final hasChanges = name != (widget.user.name ?? '') || _selectedPhoto != null;
+    final upiId = _upiController.text.trim();
+    final hasChanges = name != (widget.user.name ?? '') ||
+        _selectedPhoto != null ||
+        upiId != _initialUpiId;
     if (!hasChanges) {
       context.pop();
       return;
@@ -102,6 +120,7 @@ class _EditProfilePageState extends State<EditProfilePage> {
     context.read<AuthCubit>().updateProfile(
           name: name.isEmpty ? null : name,
           photoFile: _selectedPhoto,
+          upiId: upiId.isEmpty ? null : upiId,
         );
   }
 
@@ -148,71 +167,13 @@ class _EditProfilePageState extends State<EditProfilePage> {
               child: Column(
                 children: [
                   const SizedBox(height: 24),
-                  // Profile photo
-                  GestureDetector(
+                  ProfileAvatarPicker(
+                    photoUrl: widget.user.photoUrl,
+                    localFile: _selectedPhoto,
+                    initial: initial,
+                    radius: 60,
+                    showCameraOverlay: !isLoading,
                     onTap: isLoading ? null : _showImageSourcePicker,
-                    child: Stack(
-                      children: [
-                        CircleAvatar(
-                          radius: 60,
-                          backgroundColor: AppColors.primaryGreen,
-                          child: _selectedPhoto != null
-                              ? ClipOval(
-                                  child: Image.file(
-                                    _selectedPhoto!,
-                                    width: 120,
-                                    height: 120,
-                                    fit: BoxFit.cover,
-                                  ),
-                                )
-                              : widget.user.photoUrl != null &&
-                                      widget.user.photoUrl!.isNotEmpty
-                                  ? ClipOval(
-                                      child: CachedNetworkImage(
-                                        imageUrl: widget.user.photoUrl!,
-                                        width: 120,
-                                        height: 120,
-                                        fit: BoxFit.cover,
-                                        placeholder: (_, __) =>
-                                            const CircularProgressIndicator(),
-                                        errorWidget: (_, __, ___) => Text(
-                                          initial,
-                                          style: const TextStyle(
-                                            fontSize: 48,
-                                            color: AppColors.textWhite,
-                                            fontWeight: FontWeight.bold,
-                                          ),
-                                        ),
-                                      ),
-                                    )
-                                  : Text(
-                                      initial,
-                                      style: const TextStyle(
-                                        fontSize: 48,
-                                        color: AppColors.textWhite,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                        ),
-                        if (!isLoading)
-                          Positioned(
-                            right: 0,
-                            bottom: 0,
-                            child: Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: const BoxDecoration(
-                                color: AppColors.primaryGreen,
-                                shape: BoxShape.circle,
-                              ),
-                              child: const Icon(
-                                Icons.camera_alt,
-                                color: AppColors.textWhite,
-                                size: 20,
-                              ),
-                            ),
-                          ),
-                      ],
-                    ),
                   ),
                   const SizedBox(height: 8),
                   Text(
@@ -232,6 +193,20 @@ class _EditProfilePageState extends State<EditProfilePage> {
                       }
                       return null;
                     },
+                  ),
+                  const SizedBox(height: 16),
+                  AppTextField(
+                    label: 'UPI ID',
+                    hint: 'yourname@paytm or yourname@okaxis',
+                    controller: _upiController,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'For receiving payments via QR. Others can scan and pay you directly.',
+                    style: TextStyle(
+                      fontSize: AppFonts.fontSize12,
+                      color: AppColors.textGrey,
+                    ),
                   ),
                   const SizedBox(height: 16),
                   // Read-only info

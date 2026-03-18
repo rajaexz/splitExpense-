@@ -6,9 +6,9 @@ import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/constants/app_strings.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_fonts.dart';
 import '../../../../core/constants/app_routes.dart';
 import '../../../../application/auth/auth_cubit.dart';
+import 'widgets/auth_widgets.dart';
 
 class RegisterPage extends StatefulWidget {
   const RegisterPage({Key? key}) : super(key: key);
@@ -63,25 +63,7 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
     
     return Scaffold(
       backgroundColor: AppColors.backgroundWhite,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: AppColors.textBlack),
-          onPressed: () {
-            if (context.canPop()) context.pop();
-          },
-        ),
-        centerTitle: true,
-        title: const Text(
-          AppStrings.candidate,
-          style: TextStyle(
-            color: AppColors.textBlack,
-            fontSize: AppFonts.fontSize18,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ),
+      appBar: AuthAppBar(title: AppStrings.candidate),
       body: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
@@ -93,39 +75,17 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
           }
         },
         builder: (context, state) {
-          return SingleChildScrollView(
-            padding: const EdgeInsets.symmetric(
-              horizontal: AppDimensions.padding24,
-              vertical: AppDimensions.padding16,
-            ),
+          return AuthFormScroll(
             child: Form(
               key: _formKey,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Tab Bar
-                  TabBar(
+                  AuthTabBar(
                     controller: _tabController,
-                    indicatorColor: AppColors.primaryGreen,
-                    labelColor: AppColors.primaryGreen,
-                    unselectedLabelColor: AppColors.textBlack,
-                    labelStyle: const TextStyle(
-                      fontSize: AppFonts.fontSize16,
-                      fontWeight: FontWeight.w600,
-                    ),
-                    unselectedLabelStyle: const TextStyle(
-                      fontSize: AppFonts.fontSize16,
-                      fontWeight: FontWeight.normal,
-                    ),
-                    tabs: const [
-                      Tab(text: AppStrings.login),
-                      Tab(text: AppStrings.register),
-                    ],
-                    onTap: (index) {
-                      if (index == 0) {
-                        context.go(AppRoutes.login);
-                      }
-                    },
+                    loginLabel: AppStrings.login,
+                    registerLabel: AppStrings.register,
+                    onLoginTap: () => context.go(AppRoutes.login),
                   ),
                   const SizedBox(height: AppDimensions.margin32),
                   
@@ -248,62 +208,24 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
                   ),
                   const SizedBox(height: AppDimensions.margin16),
                   
-                  // Login Link
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        AppStrings.haveAccount,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                      TextButton(
-                        onPressed: () => context.go(AppRoutes.login),
-                        style: TextButton.styleFrom(
-                          padding: const EdgeInsets.only(left: 4),
-                          minimumSize: Size.zero,
-                          tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        ),
-                        child: const Text(
-                          AppStrings.login,
-                          style: TextStyle(
-                            color: AppColors.primaryGreen,
-                            fontSize: AppFonts.fontSize14,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ],
+                  AuthLinkRow(
+                    text: AppStrings.haveAccount,
+                    linkText: AppStrings.login,
+                    onLinkTap: () => context.go(AppRoutes.login),
                   ),
                   const SizedBox(height: AppDimensions.margin24),
                   
-                  // Social Register Section
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Text(
-                        AppStrings.orRegisterWith,
-                        style: theme.textTheme.bodyMedium,
-                      ),
-                    ],
-                  ),
+                  AuthSectionDivider(text: AppStrings.orRegisterWith),
                   const SizedBox(height: AppDimensions.margin16),
-                  
-                  // Social Icons
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      _buildSocialIcon(
+                  AuthSocialIcons(
+                    items: [
+                      AuthSocialIconItem(
                         icon: Icons.g_mobiledata,
-                        onTap: () {
-                          context.read<AuthCubit>().signInWithGoogle();
-                        },
+                        onTap: () => context.read<AuthCubit>().signInWithGoogle(),
                       ),
-                      const SizedBox(width: AppDimensions.margin24),
-                      _buildSocialIcon(
+                      AuthSocialIconItem(
                         icon: Icons.facebook,
-                        onTap: () {
-                          context.read<AuthCubit>().signInWithFacebook();
-                        },
+                        onTap: () => context.read<AuthCubit>().signInWithFacebook(),
                       ),
                     ],
                   ),
@@ -312,28 +234,6 @@ class _RegisterPageState extends State<RegisterPage> with SingleTickerProviderSt
             ),
           );
         },
-      ),
-    );
-  }
-  
-  Widget _buildSocialIcon({required IconData icon, required VoidCallback onTap}) {
-    return GestureDetector(
-      onTap: onTap,
-      child: Container(
-        width: 50,
-        height: 50,
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: AppColors.borderGrey,
-            width: 1,
-          ),
-        ),
-        child: Icon(
-          icon,
-          size: AppDimensions.iconSize24,
-          color: AppColors.textBlack,
-        ),
       ),
     );
   }

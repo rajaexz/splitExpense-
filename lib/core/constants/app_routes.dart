@@ -39,7 +39,11 @@ class AppRoutes {
   static const String locationSearch = '/location-search';
   static const String groupDetail = '/group-detail';
   static const String addMember = '/add-member';
+  static const String addMemberFromContacts = '/add-member-from-contacts';
+  static const String addMemberReview = '/add-member-review';
+  static const String addSomeoneNew = '/add-someone-new';
   static const String addExpense = '/add-expense';
+  static const String requestPaymentQr = '/request-payment-qr';
 
   // Shared Gallery
   static const String shareGallery = '/share-gallery';

@@ -12,7 +12,8 @@ abstract class AuthRepository {
   Future<UserModel> signInWithFacebook();
   Future<String> verifyPhoneNumber(String phoneNumber);
   Future<UserModel> signInWithPhoneCredential(String verificationId, String smsCode);
-  Future<UserModel> updateProfile({String? name, File? photoFile, String? phone});
+  Future<UserModel> updateProfile({String? name, File? photoFile, String? phone, String? upiId});
   Future<String?> getProfilePhone(String uid);
+  Future<String?> getUpiId(String uid);
   Stream<UserModel?> authStateChanges();
 }

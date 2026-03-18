@@ -36,6 +36,7 @@ dependencies:
   
   # Utils
   intl: ^0.18.1
+  qr_flutter: ^4.1.0
   rxdart: ^0.27.7
   uuid: ^4.2.1
   permission_handler: ^11.3.0
@@ -70,9 +71,9 @@ dependencies:
   video_player: ^2.9.1
 
 flutter_launcher_icons:
-  android: "launcher_icon"
+  image_path: "assets/icon/logo.png"
+  android: true
   ios: true
-  image_path: "assets/icons/icon.png"
   
 dev_dependencies:
   flutter_test:

@@ -6,24 +6,29 @@ import '../../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/community/presentation/auth/login_page.dart';
 import '../../features/community/presentation/auth/register_page.dart';
 import '../../application/auth/auth_cubit.dart';
-import '../../../features/community/presentation/pages/home_page.dart';
-import '../../../features/community/presentation/pages/create_group_page.dart';
-import '../../../features/community/presentation/pages/location_search_page.dart';
-import '../../../features/community/presentation/pages/group_detail_page.dart';
-import '../../../features/community/presentation/pages/add_member_page.dart';
+import '../../../features/community/presentation/home/home_page.dart';
+import '../../../features/community/presentation/create_group/create_group_page.dart';
+import '../../../features/community/presentation/location_search/location_search_page.dart';
+import '../../../features/community/presentation/group_detail/group_detail_page.dart';
 import '../../../features/community/presentation/add_expense/add_expense_page.dart';
-import '../../../features/community/presentation/pages/chat_page.dart';
-import '../../../features/community/presentation/pages/notifications_page.dart';
-import '../../../features/community/presentation/pages/chats_list_page.dart';
-import '../../../features/community/presentation/pages/contacts_page.dart';
-import '../../../features/community/presentation/pages/share_gallery_page.dart';
-import '../../../features/community/presentation/pages/shared_with_me_page.dart';
-import '../../../features/community/presentation/pages/gallery_viewer_page.dart';
+import '../../../features/community/presentation/add_member/add_member_by_email_page.dart';
+import '../../../features/community/presentation/chat/chat_page.dart';
+import '../../../features/community/presentation/notifications/notifications_page.dart';
+import '../../../features/community/presentation/chat/chats_list_page.dart';
+import '../../../features/community/presentation/contacts/contacts_page.dart';
+import '../../../features/community/presentation/add_member/add_member_from_contacts_page.dart';
+import '../../../features/community/presentation/add_member/add_member_review_page.dart';
+import '../../../features/community/presentation/add_member/add_someone_new_page.dart';
+import '../../../features/community/presentation/add_member/selected_member_model.dart';
+import '../../features/community/presentation/share_gallery/share_gallery_page.dart';
+import '../../features/community/presentation/share_gallery/shared_with_me_page.dart';
+import '../../features/community/presentation/share_gallery/gallery_viewer_page.dart';
 import '../../features/community/presentation/auth/profile_page.dart';
 import '../../features/community/presentation/auth/user_profile_page.dart';
 import '../../features/community/presentation/auth/edit_profile_page.dart';
 import '../../features/community/presentation/auth/settings_page.dart';
-import '../../../features/community/presentation/pages/group_history_page.dart';
+import '../../../features/community/presentation/group_history/group_history_page.dart';
+import '../../../features/community/presentation/payment/request_payment_qr_page.dart';
 import '../../data/models/user_model.dart';
 import '../../application/group/group_cubit.dart';
 import '../../application/message/message_cubit.dart';
@@ -220,6 +225,71 @@ class AppRouter {
         builder: (context, state) => const ContactsPage(),
       ),
 
+      // Add Member from Contacts
+      GoRoute(
+        path: AppRoutes.addMemberFromContacts,
+        name: 'add-member-from-contacts',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          return AddMemberFromContactsPage(
+            groupId: args?['groupId'] as String?,
+            groupName: args?['groupName'] as String?,
+          );
+        },
+      ),
+
+      // Add Member Review
+      GoRoute(
+        path: AppRoutes.addMemberReview,
+        name: 'add-member-review',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          return BlocProvider(
+            create: (context) => di.sl<GroupCubit>(),
+            child: AddMemberReviewPage(
+              members: (args['members'] as List).cast<SelectedMember>(),
+              groupId: args['groupId'] as String?,
+              groupName: args['groupName'] as String?,
+            ),
+          );
+        },
+      ),
+
+      // Add Someone New
+      GoRoute(
+        path: AppRoutes.addSomeoneNew,
+        name: 'add-someone-new',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          return AddSomeoneNewPage(
+            initialName: args?['name'] as String?,
+            initialPhone: args?['phone'] as String?,
+          );
+        },
+      ),
+
+      // Request Payment QR
+      GoRoute(
+        path: AppRoutes.requestPaymentQr,
+        name: 'request-payment-qr',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          final membersRaw = args['membersWhoOwe'] as List?;
+          final membersWhoOwe = membersRaw != null
+              ? (membersRaw)
+                  .map((e) => e as Map<String, dynamic>)
+                  .toList()
+              : <Map<String, dynamic>>[];
+          return RequestPaymentQrPage(
+            amount: (args['amount'] as num).toDouble(),
+            currency: args['currency'] as String? ?? 'INR',
+            groupName: args['groupName'] as String?,
+            groupId: args['groupId'] as String?,
+            membersWhoOwe: membersWhoOwe,
+          );
+        },
+      ),
+
       // Shared Gallery
       GoRoute(
         path: AppRoutes.shareGallery,
@@ -299,7 +369,7 @@ class AppRouter {
         },
       ),
       
-      // Add Member
+      // Add Member (by email/phone)
       GoRoute(
         path: '${AppRoutes.addMember}/:id',
         name: 'add-member',
@@ -307,7 +377,7 @@ class AppRouter {
           final groupId = state.pathParameters['id']!;
           return BlocProvider(
             create: (context) => di.sl<GroupCubit>(),
-            child: AddMemberPage(groupId: groupId),
+            child: AddMemberByEmailPage(groupId: groupId),
           );
         },
       ),

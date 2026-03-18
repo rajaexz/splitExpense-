@@ -158,13 +158,19 @@ class AuthCubit extends BaseCubit<AuthState> {
     }
   }
 
-  Future<void> updateProfile({String? name, File? photoFile, String? phone}) async {
+  Future<void> updateProfile({
+    String? name,
+    File? photoFile,
+    String? phone,
+    String? upiId,
+  }) async {
     if (isClosed) return;
     try {
       final user = await authRepository.updateProfile(
         name: name,
         photoFile: photoFile,
         phone: phone,
+        upiId: upiId,
       );
       if (!isClosed) {
         emit(AuthSuccess(user));
@@ -173,6 +179,14 @@ class AuthCubit extends BaseCubit<AuthState> {
       if (!isClosed) {
         emit(AuthError(e.toString()));
       }
+    }
+  }
+
+  Future<String?> getUpiId(String uid) async {
+    try {
+      return await authRepository.getUpiId(uid);
+    } catch (_) {
+      return null;
     }
   }
 

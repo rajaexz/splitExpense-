@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_fonts.dart';
+import 'widgets/auth_widgets.dart';
 
 /// Shows another user's profile (read-only). Fetches from Firestore.
 class UserProfilePage extends StatelessWidget {
@@ -57,22 +58,11 @@ class UserProfilePage extends StatelessWidget {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircleAvatar(
+                  ProfileAvatarPicker(
+                    photoUrl: photoUrl,
+                    initial: name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
                     radius: 56,
-                    backgroundColor: AppColors.primaryGreen,
-                    backgroundImage: photoUrl != null && photoUrl.isNotEmpty
-                        ? NetworkImage(photoUrl)
-                        : null,
-                    child: photoUrl == null || photoUrl.isEmpty
-                        ? Text(
-                            name.isNotEmpty ? name.substring(0, 1).toUpperCase() : '?',
-                            style: const TextStyle(
-                              fontSize: 40,
-                              color: AppColors.textWhite,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          )
-                        : null,
+                    showCameraOverlay: false,
                   ),
                   const SizedBox(height: 24),
                   Text(

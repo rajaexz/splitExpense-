@@ -83,7 +83,12 @@ class AuthRepositoryImpl implements AuthRepository {
   }
 
   @override
-  Future<UserModel> updateProfile({String? name, File? photoFile, String? phone}) async {
+  Future<UserModel> updateProfile({
+    String? name,
+    File? photoFile,
+    String? phone,
+    String? upiId,
+  }) async {
     final userId = firebaseAuth.currentUser?.uid;
     if (userId == null) throw Exception('Not logged in');
 
@@ -104,6 +109,7 @@ class AuthRepositoryImpl implements AuthRepository {
       if (name != null) updates['name'] = name;
       if (photoUrl != null) updates['avatarUrl'] = photoUrl;
       if (phone != null) updates['phone'] = phone.isEmpty ? null : phone;
+      if (upiId != null) updates['upiId'] = upiId.trim().isEmpty ? null : upiId.trim();
       final userDoc = await firestore.collection('users').doc(userId).get();
       final oldName = userDoc.data()?['name'] as String?;
       if (oldName != null && oldName.trim().isNotEmpty && oldName != name) {
@@ -155,6 +161,16 @@ class AuthRepositoryImpl implements AuthRepository {
     try {
       final doc = await firestore.collection('users').doc(uid).get();
       return doc.data()?['phone'] as String?;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  @override
+  Future<String?> getUpiId(String uid) async {
+    try {
+      final doc = await firestore.collection('users').doc(uid).get();
+      return doc.data()?['upiId'] as String?;
     } catch (_) {
       return null;
     }

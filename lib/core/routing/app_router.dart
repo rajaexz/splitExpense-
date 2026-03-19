@@ -10,6 +10,7 @@ import '../../../features/community/presentation/home/home_page.dart';
 import '../../../features/community/presentation/create_group/create_group_page.dart';
 import '../../../features/community/presentation/location_search/location_search_page.dart';
 import '../../../features/community/presentation/group_detail/group_detail_page.dart';
+import '../../../features/community/presentation/group_detail/expense_detail_page.dart';
 import '../../../features/community/presentation/add_expense/add_expense_page.dart';
 import '../../../features/community/presentation/add_member/add_member_by_email_page.dart';
 import '../../../features/community/presentation/chat/chat_page.dart';
@@ -29,6 +30,7 @@ import '../../features/community/presentation/auth/edit_profile_page.dart';
 import '../../features/community/presentation/auth/settings_page.dart';
 import '../../../features/community/presentation/group_history/group_history_page.dart';
 import '../../../features/community/presentation/payment/request_payment_qr_page.dart';
+import '../../../features/community/presentation/payment/payment_request_view_page.dart';
 import '../../data/models/user_model.dart';
 import '../../application/group/group_cubit.dart';
 import '../../application/message/message_cubit.dart';
@@ -36,6 +38,7 @@ import '../../application/addExpense/expense_cubit.dart';
 import '../../application/sheredGallery/shared_gallery_cubit.dart';
 import '../../data/models/group_model.dart';
 import '../../data/models/expense_model.dart';
+import '../constants/app_colors.dart';
 import '../constants/app_routes.dart';
 import '../di/injection_container.dart' as di;
 
@@ -290,6 +293,49 @@ class AppRouter {
         },
       ),
 
+      // Payment Request View (QR from notification - for recipient to scan and pay)
+      GoRoute(
+        path: AppRoutes.paymentRequestView,
+        name: 'payment-request-view',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>? ?? {};
+          final upiUri = args['upiUri'] as String? ?? '';
+          final amountVal = args['amount'];
+          final amount = amountVal is num
+              ? amountVal.toDouble()
+              : (double.tryParse(amountVal?.toString() ?? '') ?? 0.0);
+          final currency = args['currency'] as String? ?? 'INR';
+          final senderName = args['senderName'] as String? ?? 'Someone';
+          final groupName = args['groupName'] as String?;
+          if (upiUri.isEmpty || amount <= 0) {
+            return Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 48, color: AppColors.error),
+                    const SizedBox(height: 16),
+                    const Text('Invalid payment request'),
+                    const SizedBox(height: 16),
+                    TextButton(
+                      onPressed: () => context.pop(),
+                      child: const Text('Go back'),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          return PaymentRequestViewPage(
+            upiUri: upiUri,
+            amount: amount,
+            currency: currency,
+            senderName: senderName,
+            groupName: groupName,
+          );
+        },
+      ),
+
       // Shared Gallery
       GoRoute(
         path: AppRoutes.shareGallery,
@@ -394,6 +440,32 @@ class AppRouter {
           return BlocProvider(
             create: (context) => di.sl<ExpenseCubit>(),
             child: AddExpensePage(groupId: groupId, group: group, expense: expense),
+          );
+        },
+      ),
+
+      // Expense Detail
+      GoRoute(
+        path: AppRoutes.expenseDetail,
+        name: 'expense-detail',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>;
+          final groupId = args['groupId'] as String;
+          final group = args['group'] as GroupModel;
+          final expense = args['expense'] as ExpenseModel;
+          final expenses = (args['expenses'] as List<dynamic>?)?.cast<ExpenseModel>() ?? [expense];
+          final currentUserId = args['currentUserId'] as String;
+          final isDark = args['isDark'] as bool? ?? false;
+          return BlocProvider(
+            create: (context) => di.sl<ExpenseCubit>(),
+            child: ExpenseDetailPage(
+              groupId: groupId,
+              group: group,
+              expense: expense,
+              expenses: expenses,
+              currentUserId: currentUserId,
+              isDark: isDark,
+            ),
           );
         },
       ),

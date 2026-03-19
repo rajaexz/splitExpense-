@@ -142,6 +142,7 @@ class _RequestPaymentQrPageState extends State<RequestPaymentQrPage> {
 
     setState(() => _isSendingNotification = true);
     try {
+      final upiUri = _buildUpiUri();
       await di.sl<NotificationRemoteDataSource>().sendPaymentReminderNotifications(
         senderId: FirebaseAuth.instance.currentUser!.uid,
         senderName: _userName ?? 'Someone',
@@ -150,6 +151,7 @@ class _RequestPaymentQrPageState extends State<RequestPaymentQrPage> {
         targetUserIds: selected,
         currency: widget.currency,
         totalAmount: widget.amount,
+        upiUri: upiUri.isNotEmpty ? upiUri : null,
       );
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

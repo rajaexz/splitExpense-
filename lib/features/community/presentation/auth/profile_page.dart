@@ -29,7 +29,8 @@ class ProfilePage extends StatelessWidget {
         title: const Text('My Profile'),
         foregroundColor: isDark ? AppColors.textWhite : AppColors.textBlack,
       ),
-      body: BlocConsumer<AuthCubit, AuthState>(
+      body: SafeArea(
+        child: BlocConsumer<AuthCubit, AuthState>(
         listener: (context, state) {
           if (state is AuthError) {
             ScaffoldMessenger.of(context).showSnackBar(
@@ -57,7 +58,6 @@ class ProfilePage extends StatelessWidget {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  
                   const Icon(
                     Icons.person_outline,
                     size: 64,
@@ -83,6 +83,7 @@ class ProfilePage extends StatelessWidget {
             ),
           );
         },
+        ),
       ),
     );
   }

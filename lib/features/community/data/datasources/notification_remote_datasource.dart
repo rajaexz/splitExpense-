@@ -16,6 +16,7 @@ abstract class NotificationRemoteDataSource {
     required List<String> targetUserIds,
     required String currency,
     required double totalAmount,
+    String? upiUri,
   });
 }
 
@@ -103,6 +104,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required List<String> targetUserIds,
     required String currency,
     required double totalAmount,
+    String? upiUri,
   }) async {
     if (targetUserIds.isEmpty) return;
 
@@ -116,20 +118,25 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
           .collection('notifications')
           .doc();
 
+      final data = <String, dynamic>{
+        'groupId': groupId,
+        'groupName': groupName,
+        'senderId': senderId,
+        'senderName': senderName,
+        'amount': totalAmount,
+        'currency': currency,
+      };
+      if (upiUri != null && upiUri.isNotEmpty) {
+        data['upiUri'] = upiUri;
+      }
+
       batch.set(notificationRef, {
         'id': notificationRef.id,
         'userId': userId,
         'type': 'payment_reminder',
         'title': 'Payment Reminder',
-        'body': '$senderName is requesting $amountStr. Please send the money.',
-        'data': {
-          'groupId': groupId,
-          'groupName': groupName,
-          'senderId': senderId,
-          'senderName': senderName,
-          'amount': totalAmount,
-          'currency': currency,
-        },
+        'body': '$senderName is requesting $amountStr. Scan QR to pay.',
+        'data': data,
         'read': false,
         'createdAt': FieldValue.serverTimestamp(),
       });

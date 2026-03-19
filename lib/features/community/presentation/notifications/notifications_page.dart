@@ -59,7 +59,23 @@ void _handleNotificationTap(BuildContext context, NotificationModel notification
       );
       break;
     case 'payment_reminder':
-      context.push('${AppRoutes.groupDetail}/$groupId');
+      if (notification.upiUri != null &&
+          notification.upiUri!.isNotEmpty &&
+          notification.amount != null &&
+          notification.amount! > 0) {
+        context.push(
+          AppRoutes.paymentRequestView,
+          extra: {
+            'upiUri': notification.upiUri!,
+            'amount': notification.amount!,
+            'currency': notification.currency ?? 'INR',
+            'senderName': notification.senderName ?? 'Someone',
+            'groupName': notification.groupName,
+          },
+        );
+      } else {
+        context.push('${AppRoutes.groupDetail}/$groupId');
+      }
       break;
     case 'broadcast_video':
       context.push('${AppRoutes.groupDetail}/$groupId');

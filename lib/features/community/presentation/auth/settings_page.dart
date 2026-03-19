@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../../../core/constants/app_colors.dart';
 import '../../../../core/constants/app_dimensions.dart';
 import '../../../../core/constants/app_routes.dart';
+import '../../../../core/di/injection_container.dart' as di;
+import '../../../../core/services/fcm_service.dart';
 import '../../../../core/widgets/settings_tile.dart';
 
 class SettingsPage extends StatelessWidget {
@@ -37,8 +40,37 @@ class SettingsPage extends StatelessWidget {
                   isDark: isDark,
                   onTap: () => context.push(AppRoutes.groupHistory),
                 ),
+                if (di.sl.isRegistered<FcmService>())
+                  SettingsTile(
+                    icon: Icons.notifications_active,
+                    title: 'FCM Token (Debug)',
+                    subtitle: 'Tap to copy token for push notifications',
+                    isDark: isDark,
+                    onTap: () => _showFcmToken(context, isDark),
+                  ),
               ],
             ),
     );
+  }
+
+  Future<void> _showFcmToken(BuildContext context, bool isDark) async {
+    final fcm = di.sl<FcmService>();
+    final token = await fcm.getToken();
+    if (!context.mounted) return;
+    if (token == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Could not get FCM token. Check console logs. Use real device for iOS.'),
+          backgroundColor: AppColors.error,
+        ),
+      );
+      return;
+    }
+    await Clipboard.setData(ClipboardData(text: token));
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('FCM token copied to clipboard')),
+      );
+    }
   }
 }

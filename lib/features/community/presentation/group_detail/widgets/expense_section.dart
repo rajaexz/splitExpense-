@@ -501,6 +501,7 @@ class _ExpenseListContent extends StatelessWidget {
           for (final e in grouped[key]!)
             _ExpenseListItem(
               expense: e,
+              expenses: expenses,
               canEditDelete: e.createdBy == currentUserId,
               group: group,
               groupId: groupId,
@@ -516,6 +517,7 @@ class _ExpenseListContent extends StatelessWidget {
 
 class _ExpenseListItem extends StatelessWidget {
   final ExpenseModel expense;
+  final List<ExpenseModel> expenses;
   final bool canEditDelete;
   final GroupModel group;
   final String groupId;
@@ -524,6 +526,7 @@ class _ExpenseListItem extends StatelessWidget {
 
   const _ExpenseListItem({
     required this.expense,
+    required this.expenses,
     required this.canEditDelete,
     required this.group,
     required this.groupId,
@@ -551,11 +554,27 @@ class _ExpenseListItem extends StatelessWidget {
         ? 'You paid ${e.amount.toStringAsFixed(2)}'
         : 'Paid ${e.amount.toStringAsFixed(2)}';
 
-    return Container(
-      margin: const EdgeInsets.only(bottom: AppDimensions.margin12),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
+    return InkWell(
+      onTap: () {
+        context.push(
+          AppRoutes.expenseDetail,
+          extra: {
+            'groupId': groupId,
+            'group': group,
+            'expense': e,
+            'expenses': expenses,
+            'currentUserId': currentUserId,
+            'isDark': isDark,
+          },
+        );
+      },
+      borderRadius: BorderRadius.circular(AppDimensions.radius12),
+      child: Container(
+        margin: const EdgeInsets.only(bottom: AppDimensions.margin12),
+        padding: const EdgeInsets.symmetric(vertical: 4),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
           SizedBox(
             width: 44,
             child: Column(
@@ -707,6 +726,7 @@ class _ExpenseListItem extends StatelessWidget {
             ),
         ],
       ),
+    ),
     );
   }
 }

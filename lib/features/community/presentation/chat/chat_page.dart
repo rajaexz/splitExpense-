@@ -168,9 +168,14 @@ class _ChatPageState extends State<ChatPage> {
                     padding: const EdgeInsets.all(AppDimensions.padding16),
                     itemCount: messages.length,
                     itemBuilder: (context, index) {
+                      final msg = messages[index];
                       return MessageBubble(
-                        message: messages[index],
+                        message: msg,
                         isDark: isDark,
+                        groupId: widget.groupId,
+                        onDelete: msg.senderId == currentUserId
+                            ? () => context.read<MessageCubit>().deleteMessage(widget.groupId, msg.id)
+                            : null,
                       );
                     },
                   );

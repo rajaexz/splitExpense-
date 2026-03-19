@@ -9,20 +9,75 @@ import '../../../../../data/models/message_model.dart';
 class MessageBubble extends StatelessWidget {
   final MessageModel message;
   final bool isDark;
+  final String groupId;
+  final VoidCallback? onDelete;
 
   const MessageBubble({
-    Key? key,
+    super.key,
     required this.message,
     required this.isDark,
-  }) : super(key: key);
+    required this.groupId,
+    this.onDelete,
+  });
 
   bool get _isMe => message.senderId == FirebaseAuth.instance.currentUser?.uid;
 
+  void _showMessageOptions(BuildContext context) {
+    if (!_isMe || onDelete == null) return;
+
+    showModalBottomSheet(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.delete_outline, color: AppColors.error),
+              title: const Text('Delete message'),
+              onTap: () {
+                Navigator.pop(ctx);
+                _confirmAndDelete(context);
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Future<void> _confirmAndDelete(BuildContext context) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Delete message?'),
+        content: const Text(
+          'This message will be removed for everyone. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            style: TextButton.styleFrom(foregroundColor: AppColors.error),
+            child: const Text('Delete'),
+          ),
+        ],
+      ),
+    );
+    if (confirm == true && context.mounted) {
+      onDelete?.call();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: AppDimensions.margin8),
-      child: Row(
+    return GestureDetector(
+      onLongPress: _isMe ? () => _showMessageOptions(context) : null,
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: AppDimensions.margin8),
+        child: Row(
         mainAxisAlignment: _isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
@@ -72,6 +127,7 @@ class MessageBubble extends StatelessWidget {
             ),
           ],
         ],
+        ),
       ),
     );
   }

@@ -11,19 +11,41 @@ void handleNotificationNavigation(RemoteMessage message, BuildContext? context) 
   final groupName = data['groupName'] as String? ?? 'Chat';
   final type = data['type'] as String? ?? '';
 
-  if (groupId == null) return;
-
   final ctx = context ?? AppRouter.navigatorKey.currentContext;
   if (ctx == null) return;
 
   switch (type) {
     case 'group_message':
-      ctx.push('${AppRoutes.chat}/$groupId?name=${Uri.encodeComponent(groupName)}');
+      if (groupId != null) {
+        ctx.push('${AppRoutes.chat}/$groupId?name=${Uri.encodeComponent(groupName)}');
+      }
       break;
     case 'payment_reminder':
+      final upiUri = data['upiUri'] as String?;
+      final amountStr = data['amount'] as String?;
+      final amount = double.tryParse(amountStr ?? '') ?? 0.0;
+      if (upiUri != null &&
+          upiUri.isNotEmpty &&
+          amount > 0) {
+        ctx.push(
+          AppRoutes.paymentRequestView,
+          extra: {
+            'upiUri': upiUri,
+            'amount': amount,
+            'currency': data['currency'] ?? 'INR',
+            'senderName': data['senderName'] ?? 'Someone',
+            'groupName': groupName,
+          },
+        );
+      } else if (groupId != null) {
+        ctx.push('${AppRoutes.groupDetail}/$groupId');
+      }
+      break;
     case 'settle_up_reminder':
     case 'broadcast_video':
     default:
-      ctx.push('${AppRoutes.groupDetail}/$groupId');
+      if (groupId != null) {
+        ctx.push('${AppRoutes.groupDetail}/$groupId');
+      }
   }
 }

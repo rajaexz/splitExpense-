@@ -14,6 +14,7 @@ class AddExpenseGroupPicker extends StatelessWidget {
   const AddExpenseGroupPicker({super.key, required this.isDark});
 
   static void show(BuildContext context, bool isDark) {
+    final groupCubit = context.read<GroupCubit>();
     showModalBottomSheet(
       context: context,
       useSafeArea: true,
@@ -21,7 +22,12 @@ class AddExpenseGroupPicker extends StatelessWidget {
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
       ),
-      builder: (ctx) => AddExpenseGroupPicker(isDark: isDark),
+      builder: (ctx) => SafeArea(
+        child: BlocProvider.value(
+          value: groupCubit,
+          child: AddExpenseGroupPicker(isDark: isDark),
+        ),
+      ),
     );
   }
 

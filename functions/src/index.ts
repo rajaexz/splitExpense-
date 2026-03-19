@@ -77,17 +77,25 @@ export const onNotificationCreated = functions.firestore
       },
     };
 
+    const fcmData: Record<string, string> = {
+      type: type || "",
+      groupId: (data.groupId || "").toString(),
+      groupName: (data.groupName || "").toString(),
+    };
+    if (type === "payment_reminder" && data.upiUri) {
+      fcmData.upiUri = data.upiUri;
+      fcmData.amount = String(data.amount ?? "");
+      fcmData.currency = (data.currency || "").toString();
+      fcmData.senderName = (data.senderName || "").toString();
+    }
+
     const message: admin.messaging.Message = {
       token: fcmToken,
       notification: {
         title,
         body,
       },
-      data: {
-        type: type || "",
-        groupId: (data.groupId || "").toString(),
-        groupName: (data.groupName || "").toString(),
-      },
+      data: fcmData,
       android: androidConfig,
       apns: {
         payload: {

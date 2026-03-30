@@ -5,6 +5,20 @@ class AppColors {
   static const Color primaryGreen = Color(0xFF67A88B);
   static const Color primaryGreenDark = Color(0xFF61947D);
   static const Color primaryGreenLight = Color(0xFF81C784);
+
+  // STEM / Figma Design Tokens
+  static const Color stemBackground = Color(0xFF131313);
+  static const Color stemCard = Color(0xFF1C1B1B);
+  static const Color stemEmerald = Color(0xFF92D4B5);
+  static const Color stemMutedText = Color(0xFFBFC9C2);
+  static const Color stemLightText = Color(0xFFE5E2E1);
+  static const Color stemInputBg = Color(0xFF0E0E0E);
+  static const Color stemSurface = Color(0xFF2A2A2A);
+  static const Color stemInactive = Color(0xFF353534);
+  static const Color stemButtonText = Color(0xFF003826);
+  static const Color stemGreyText = Color(0xFF89938D);
+  static const Color stemOweColor = Color(0xFFFFB3B1);
+  static const Color stemFormSurface = Color(0xFF2C2C2C);
   
   // Background Colors
   static const Color backgroundWhite = Color(0xFFFFFFFF);

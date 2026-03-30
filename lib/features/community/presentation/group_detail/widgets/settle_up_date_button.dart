@@ -67,50 +67,39 @@ class SettleUpDateButton extends StatelessWidget {
     final dateStr = hasDate
         ? '${group.settleUpDate!.day}/${group.settleUpDate!.month}/${group.settleUpDate!.year}'
         : 'Add settle up date';
-    return Material(
-      color: isDark ? AppColors.darkCard : AppColors.backgroundWhite,
-      borderRadius: BorderRadius.circular(12),
-      child: InkWell(
-        onTap: () => _pickDate(context),
-        borderRadius: BorderRadius.circular(12),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: isDark ? AppColors.borderGreyDark : AppColors.borderGrey,
+    final useStemStyle = isDark;
+    return GestureDetector(
+      onTap: () => _pickDate(context),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            Icons.calendar_today_outlined,
+            size: useStemStyle ? 14 : 18,
+            color: useStemStyle ? AppColors.stemEmerald : AppColors.primaryGreen,
+          ),
+          SizedBox(width: useStemStyle ? 6 : 8),
+          Text(
+            dateStr,
+            style: TextStyle(
+              fontSize: useStemStyle ? 14 : AppFonts.fontSize12,
+              fontWeight: FontWeight.w600,
+              color: useStemStyle ? AppColors.stemEmerald : (isDark ? AppColors.textWhite : AppColors.textBlack),
             ),
+            overflow: TextOverflow.ellipsis,
           ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(
-                Icons.calendar_today,
-                size: 18,
-                color: AppColors.primaryGreen,
+          if (hasDate) ...[
+            const SizedBox(width: 8),
+            GestureDetector(
+              onTap: () => _clearDate(context),
+              child: Icon(
+                Icons.close,
+                size: useStemStyle ? 14 : 16,
+                color: useStemStyle ? AppColors.stemMutedText : AppColors.textGrey,
               ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  dateStr,
-                  style: TextStyle(
-                    fontSize: AppFonts.fontSize12,
-                    fontWeight: FontWeight.w500,
-                    color: isDark ? AppColors.textWhite : AppColors.textBlack,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              if (hasDate)
-                IconButton(
-                  icon: const Icon(Icons.close, size: 16),
-                  onPressed: () => _clearDate(context),
-                  padding: EdgeInsets.zero,
-                  constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
-                ),
-            ],
-          ),
-        ),
+            ),
+          ],
+        ],
       ),
     );
   }

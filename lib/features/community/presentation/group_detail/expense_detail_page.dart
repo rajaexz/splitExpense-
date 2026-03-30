@@ -231,9 +231,9 @@ class ExpenseDetailPage extends StatelessWidget {
                   children: [
                     Expanded(
                       child: TextField(
-                        decoration: InputDecoration(
+                        decoration: const InputDecoration(
                           hintText: 'Add a comment',
-                          hintStyle: const TextStyle(
+                          hintStyle: TextStyle(
                             fontSize: AppFonts.fontSize14,
                             color: AppColors.textGrey,
                           ),
@@ -337,7 +337,7 @@ class _PaymentSplitSection extends StatelessWidget {
                             Container(
                               width: 4,
                               height: 4,
-                              decoration: BoxDecoration(
+                              decoration: const BoxDecoration(
                                 color: AppColors.textGrey,
                                 shape: BoxShape.circle,
                               ),

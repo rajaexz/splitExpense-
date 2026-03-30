@@ -193,7 +193,7 @@ class _GalleryViewerPageState extends State<GalleryViewerPage> {
 
     if (_error != null) {
       return Scaffold(
-        backgroundColor: isDark ? AppColors.darkBackground : AppColors.backgroundWhite,
+        backgroundColor: AppColors.darkBackground,
         appBar: AppBar(
           title: const Text('Gallery'),
           backgroundColor: isDark ? AppColors.darkCard : AppColors.backgroundWhite,

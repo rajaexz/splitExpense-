@@ -5,6 +5,7 @@ import '../../../features/onboarding/presentation/pages/splash_screen.dart';
 import '../../../features/onboarding/presentation/pages/onboarding_page.dart';
 import '../../features/community/presentation/auth/login_page.dart';
 import '../../features/community/presentation/auth/register_page.dart';
+import '../../features/community/presentation/auth/otp_verification_page.dart';
 import '../../application/auth/auth_cubit.dart';
 import '../../../features/community/presentation/home/home_page.dart';
 import '../../../features/community/presentation/create_group/create_group_page.dart';
@@ -149,6 +150,22 @@ class AppRouter {
               ),
             );
           }
+        },
+      ),
+
+      // OTP Verification
+      GoRoute(
+        path: AppRoutes.otpVerification,
+        name: 'otp-verification',
+        builder: (context, state) {
+          final args = state.extra as Map<String, dynamic>?;
+          return BlocProvider(
+            create: (context) => di.sl<AuthCubit>(),
+            child: OtpVerificationPage(
+              verificationId: args?['verificationId'] as String? ?? '',
+              phoneNumber: args?['phoneNumber'] as String? ?? '',
+            ),
+          );
         },
       ),
       

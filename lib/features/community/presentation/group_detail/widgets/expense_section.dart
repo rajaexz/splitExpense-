@@ -22,6 +22,9 @@ class ExpenseSection extends StatefulWidget {
   final String currentUserId;
   final bool isDark;
   final ThemeData theme;
+  final bool hideBalanceCard;
+  final bool hideHeader;
+  final bool useStemDesign;
 
   const ExpenseSection({
     super.key,
@@ -30,6 +33,9 @@ class ExpenseSection extends StatefulWidget {
     required this.currentUserId,
     required this.isDark,
     required this.theme,
+    this.hideBalanceCard = false,
+    this.hideHeader = false,
+    this.useStemDesign = false,
   });
 
   @override
@@ -75,34 +81,42 @@ class _ExpenseSectionState extends State<ExpenseSection> {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(
-                'Trip Expenses',
-                style: theme.textTheme.titleLarge?.copyWith(
-                  fontWeight: FontWeight.bold,
+              if (!widget.hideHeader) ...[
+                Text(
+                  'Trip Expenses',
+                  style: theme.textTheme.titleLarge?.copyWith(
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Sirf jisme naam add hai, unko hi paisa dena hoga',
-                style: TextStyle(
-                  fontSize: AppFonts.fontSize12,
-                  color: AppColors.textGrey,
-                  fontStyle: FontStyle.italic,
+                const SizedBox(height: 8),
+                const Text(
+                  'Sirf jisme naam add hai, unko hi paisa dena hoga',
+                  style: TextStyle(
+                    fontSize: AppFonts.fontSize12,
+                    color: AppColors.textGrey,
+                    fontStyle: FontStyle.italic,
+                  ),
                 ),
-              ),
-              const SizedBox(height: 16),
-              _TotalBalanceCard(
-                totalBalance: totalBalance,
-                currency: group.currency,
-                group: group,
-                groupId: widget.groupId,
-              ),
-              const SizedBox(height: 16),
-              _ExpenseTabBar(
-                selectedTab: _selectedTab,
-                isDark: isDark,
-                onTabSelected: (tab) => setState(() => _selectedTab = tab),
-              ),
+                const SizedBox(height: 16),
+              ],
+              if (!widget.hideBalanceCard)
+                _TotalBalanceCard(
+                  totalBalance: totalBalance,
+                  currency: group.currency,
+                  group: group,
+                  groupId: widget.groupId,
+                ),
+              if (!widget.hideBalanceCard) const SizedBox(height: 16),
+              widget.useStemDesign
+                  ? _StemExpenseTabBar(
+                      selectedTab: _selectedTab,
+                      onTabSelected: (tab) => setState(() => _selectedTab = tab),
+                    )
+                  : _ExpenseTabBar(
+                      selectedTab: _selectedTab,
+                      isDark: isDark,
+                      onTabSelected: (tab) => setState(() => _selectedTab = tab),
+                    ),
               const SizedBox(height: 16),
               if (_selectedTab == ExpenseTab.settleUp)
                 _ExpenseListContent(
@@ -111,6 +125,7 @@ class _ExpenseSectionState extends State<ExpenseSection> {
                   groupId: widget.groupId,
                   currentUserId: widget.currentUserId,
                   isDark: isDark,
+                  useStemDesign: widget.useStemDesign,
                 )
               else if (_selectedTab == ExpenseTab.balances)
                 _BalancesContent(
@@ -292,6 +307,96 @@ class _ExpenseTabBar extends StatelessWidget {
   }
 }
 
+class _StemExpenseTabBar extends StatelessWidget {
+  final ExpenseTab selectedTab;
+  final ValueChanged<ExpenseTab> onTabSelected;
+
+  const _StemExpenseTabBar({
+    required this.selectedTab,
+    required this.onTabSelected,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      decoration: BoxDecoration(
+        border: Border(
+          bottom: BorderSide(
+            color: const Color(0xFF404944).withValues(alpha: 0.1),
+          ),
+        ),
+      ),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        physics: const BouncingScrollPhysics(),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.start,
+          children: [
+            _StemTabItem(
+              label: 'Settle',
+              isSelected: selectedTab == ExpenseTab.settleUp,
+              onTap: () => onTabSelected(ExpenseTab.settleUp),
+            ),
+            _StemTabItem(
+              label: 'Balances',
+              isSelected: selectedTab == ExpenseTab.balances,
+              onTap: () => onTabSelected(ExpenseTab.balances),
+            ),
+            _StemTabItem(
+              label: 'Totals',
+              isSelected: selectedTab == ExpenseTab.totals,
+              onTap: () => onTabSelected(ExpenseTab.totals),
+            ),
+            _StemTabItem(
+              label: 'Charts',
+              isSelected: selectedTab == ExpenseTab.charts,
+              onTap: () => onTabSelected(ExpenseTab.charts),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _StemTabItem extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _StemTabItem({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.fromLTRB(12, 0, 12, 18),
+        decoration: BoxDecoration(
+          border: Border(
+            bottom: BorderSide(
+              color: isSelected ? AppColors.stemEmerald : Colors.transparent,
+              width: 2,
+            ),
+          ),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            fontSize: 16,
+            fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+            color: isSelected ? AppColors.stemEmerald : AppColors.stemMutedText,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _TabChip extends StatelessWidget {
   final String label;
   final ExpenseTab tab;
@@ -440,6 +545,7 @@ class _ExpenseListContent extends StatelessWidget {
   final String groupId;
   final String currentUserId;
   final bool isDark;
+  final bool useStemDesign;
 
   const _ExpenseListContent({
     required this.expenses,
@@ -447,6 +553,7 @@ class _ExpenseListContent extends StatelessWidget {
     required this.groupId,
     required this.currentUserId,
     required this.isDark,
+    this.useStemDesign = false,
   });
 
   @override
@@ -507,6 +614,7 @@ class _ExpenseListContent extends StatelessWidget {
               groupId: groupId,
               currentUserId: currentUserId,
               isDark: isDark,
+              useStemDesign: useStemDesign,
             ),
           const SizedBox(height: 20),
         ],
@@ -523,6 +631,7 @@ class _ExpenseListItem extends StatelessWidget {
   final String groupId;
   final String currentUserId;
   final bool isDark;
+  final bool useStemDesign;
 
   const _ExpenseListItem({
     required this.expense,
@@ -532,7 +641,26 @@ class _ExpenseListItem extends StatelessWidget {
     required this.groupId,
     required this.currentUserId,
     required this.isDark,
+    this.useStemDesign = false,
   });
+
+  String _displayName(String uid) {
+    if (uid == currentUserId) return 'You';
+    return uid.length > 8 ? '${uid.substring(0, 8)}...' : uid;
+  }
+
+  static String _currencySymbol(String c) {
+    switch (c) {
+      case 'INR':
+        return '₹';
+      case 'PKR':
+        return 'Rs. ';
+      case 'USD':
+        return '\$';
+      default:
+        return c;
+    }
+  }
 
   static String _getMonthAbbr(int month) {
     const months = [
@@ -547,12 +675,196 @@ class _ExpenseListItem extends StatelessWidget {
     final e = expense;
     final paidByMe = e.paidBy == currentUserId;
     final amIParticipant = e.isParticipant(currentUserId);
+    final share = e.shareForUser(currentUserId);
     final displayAmount = paidByMe ? e.amount : e.sharePerPerson;
     final isOwe = amIParticipant && !paidByMe;
     final isNeutral = !amIParticipant;
     final payerText = paidByMe
         ? 'You paid ${e.amount.toStringAsFixed(2)}'
         : 'Paid ${e.amount.toStringAsFixed(2)}';
+    final sym = _currencySymbol(group.currency);
+
+    if (useStemDesign) {
+      return InkWell(
+        onTap: () {
+          context.push(
+            AppRoutes.expenseDetail,
+            extra: {
+              'groupId': groupId,
+              'group': group,
+              'expense': e,
+              'expenses': expenses,
+              'currentUserId': currentUserId,
+              'isDark': true,
+            },
+          );
+        },
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          margin: const EdgeInsets.only(bottom: 16),
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: AppColors.stemCard,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: Colors.transparent),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: AppColors.stemInactive,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: e.imageUrl != null && e.imageUrl!.isNotEmpty
+                    ? CachedNetworkImage(
+                        imageUrl: e.imageUrl!,
+                        fit: BoxFit.cover,
+                      )
+                    : const Icon(
+                        Icons.receipt_long,
+                        color: AppColors.stemMutedText,
+                        size: 28,
+                      ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      e.description,
+                      style: const TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.stemLightText,
+                        fontFamily: 'Plus Jakarta Sans',
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    Text.rich(
+                      TextSpan(
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: AppColors.stemMutedText,
+                        ),
+                        children: [
+                          const TextSpan(text: 'Paid by '),
+                          TextSpan(
+                            text: _displayName(e.paidBy),
+                            style: const TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: AppColors.stemEmerald,
+                            ),
+                          ),
+                          TextSpan(
+                            text:
+                                ' • ${_getMonthAbbr(e.createdAt.month)} ${e.createdAt.day}',
+                          ),
+                        ],
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ],
+                ),
+              ),
+              SizedBox(
+                width: 120,
+                child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    '$sym${e.amount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.stemLightText,
+                      fontFamily: 'Plus Jakarta Sans',
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  if (paidByMe && amIParticipant && (e.amount - share) > 0)
+                    Text(
+                      'You get back\n$sym${(e.amount - share).toStringAsFixed(0)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.stemEmerald,
+                        letterSpacing: 0.5,
+                      ),
+                    )
+                  else if (isOwe)
+                    Text(
+                      'You owe $sym${share.toStringAsFixed(0)}',
+                      textAlign: TextAlign.right,
+                      style: const TextStyle(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w700,
+                        color: AppColors.stemOweColor,
+                        letterSpacing: 0.5,
+                      ),
+                    ),
+                ],
+                ),
+              ),
+              if (canEditDelete)
+                PopupMenuButton<String>(
+                  icon: const Icon(Icons.more_vert, color: AppColors.stemMutedText),
+                  onSelected: (value) async {
+                    if (value == 'edit') {
+                      context.push(
+                        AppRoutes.addExpense,
+                        extra: {
+                          'groupId': groupId,
+                          'group': group,
+                          'expense': e,
+                        },
+                      );
+                    } else if (value == 'delete') {
+                      final confirm = await showDialog<bool>(
+                        context: context,
+                        builder: (ctx) => AlertDialog(
+                          title: const Text('Delete Expense?'),
+                          content: Text(
+                            'Are you sure you want to delete "${e.description}"?',
+                          ),
+                          actions: [
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, false),
+                              child: const Text('Cancel'),
+                            ),
+                            TextButton(
+                              onPressed: () => Navigator.pop(ctx, true),
+                              style: TextButton.styleFrom(
+                                foregroundColor: AppColors.error,
+                              ),
+                              child: const Text('Delete'),
+                            ),
+                          ],
+                        ),
+                      );
+                      if (confirm == true) {
+                        context.read<ExpenseCubit>().deleteExpense(groupId, e.id);
+                      }
+                    }
+                  },
+                  itemBuilder: (context) => [
+                    const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                    const PopupMenuItem(value: 'delete', child: Text('Delete')),
+                  ],
+                ),
+            ],
+          ),
+        ),
+      );
+    }
 
     return InkWell(
       onTap: () {

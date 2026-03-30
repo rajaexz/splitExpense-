@@ -3,3 +3,4 @@ export 'expense_section.dart';
 export 'info_chip.dart';
 export 'members_section.dart';
 export 'settle_up_date_button.dart';
+export 'stem_members_card.dart';

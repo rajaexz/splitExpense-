@@ -5,6 +5,7 @@ import '../../../../../core/constants/app_colors.dart';
 import '../../../../../core/constants/app_fonts.dart';
 import '../../../../../core/constants/app_dimensions.dart';
 import '../../../../../data/models/message_model.dart';
+import 'package:intl/intl.dart';
 
 class MessageBubble extends StatelessWidget {
   final MessageModel message;
@@ -21,6 +22,22 @@ class MessageBubble extends StatelessWidget {
   });
 
   bool get _isMe => message.senderId == FirebaseAuth.instance.currentUser?.uid;
+  String get _initials {
+    final n = message.senderName;
+    if (n.isEmpty) return '?';
+    return n[0].toUpperCase();
+  }
+
+  Color get _bubbleTextColor {
+    // STEM chat: "my" messages use dark text on emerald gradient,
+    // others use light text on dark card.
+    return _isMe ? AppColors.stemButtonText : AppColors.stemLightText;
+  }
+
+  String get _timeLabel {
+    final dt = message.createdAt;
+    return DateFormat('h:mm a').format(dt);
+  }
 
   void _showMessageOptions(BuildContext context) {
     if (!_isMe || onDelete == null) return;
@@ -78,55 +95,102 @@ class MessageBubble extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.only(bottom: AppDimensions.margin8),
         child: Row(
-        mainAxisAlignment: _isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
-        crossAxisAlignment: CrossAxisAlignment.end,
-        children: [
-          if (!_isMe) ...[
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primaryGreen,
-              child: Text(
-                message.senderName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: AppColors.textWhite,
-                  fontSize: AppFonts.fontSize12,
+          mainAxisAlignment:
+              _isMe ? MainAxisAlignment.end : MainAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.end,
+          children: [
+            if (!_isMe) ...[
+              CircleAvatar(
+                radius: 16,
+                backgroundColor: isDark ? AppColors.stemCard : AppColors.backgroundGrey,
+                foregroundColor: AppColors.stemLightText,
+                child: Text(
+                  _initials,
+                  style: const TextStyle(
+                    fontSize: AppFonts.fontSize12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+              const SizedBox(width: AppDimensions.margin8),
+            ],
+            Flexible(
+              child: Container(
+                padding: const EdgeInsets.all(AppDimensions.padding12),
+                decoration: _isMe
+                    ? BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: [AppColors.stemEmerald, AppColors.primaryGreenDark],
+                        ),
+                        borderRadius: BorderRadius.only(
+                          topLeft:
+                              const Radius.circular(AppDimensions.radius16),
+                          topRight:
+                              const Radius.circular(AppDimensions.radius16),
+                          bottomLeft: Radius.circular(
+                            _isMe ? AppDimensions.radius16 : 0,
+                          ),
+                          bottomRight: Radius.circular(
+                            _isMe ? 0 : AppDimensions.radius16,
+                          ),
+                        ),
+                      )
+                    : BoxDecoration(
+                        color: AppColors.stemCard,
+                        borderRadius: BorderRadius.only(
+                          topLeft: const Radius.circular(
+                            AppDimensions.radius16,
+                          ),
+                          topRight: const Radius.circular(
+                            AppDimensions.radius16,
+                          ),
+                          bottomLeft: Radius.circular(
+                            _isMe ? AppDimensions.radius16 : 0,
+                          ),
+                          bottomRight: Radius.circular(
+                            _isMe ? 0 : AppDimensions.radius16,
+                          ),
+                        ),
+                      ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    if (!_isMe) ...[
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 4),
+                        child: Text(
+                          message.senderName,
+                          style: TextStyle(
+                            color: AppColors.stemMutedText,
+                            fontSize: AppFonts.fontSize12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                    _buildMessageContent(),
+                    const SizedBox(height: 6),
+                    Align(
+                      alignment: _isMe
+                          ? Alignment.bottomRight
+                          : Alignment.bottomLeft,
+                      child: Text(
+                        _timeLabel,
+                        style: TextStyle(
+                          color: _bubbleTextColor.withValues(alpha: 0.85),
+                          fontSize: AppFonts.fontSize12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-            const SizedBox(width: AppDimensions.margin8),
           ],
-          Flexible(
-            child: Container(
-              padding: const EdgeInsets.all(AppDimensions.padding12),
-              decoration: BoxDecoration(
-                color: _isMe
-                    ? AppColors.primaryGreen
-                    : (isDark ? AppColors.darkCard : AppColors.backgroundGrey),
-                borderRadius: BorderRadius.only(
-                  topLeft: const Radius.circular(AppDimensions.radius16),
-                  topRight: const Radius.circular(AppDimensions.radius16),
-                  bottomLeft: Radius.circular(_isMe ? AppDimensions.radius16 : 0),
-                  bottomRight: Radius.circular(_isMe ? 0 : AppDimensions.radius16),
-                ),
-              ),
-              child: _buildMessageContent(),
-            ),
-          ),
-          if (_isMe) ...[
-            const SizedBox(width: AppDimensions.margin8),
-            CircleAvatar(
-              radius: 16,
-              backgroundColor: AppColors.primaryGreen,
-              child: Text(
-                message.senderName[0].toUpperCase(),
-                style: const TextStyle(
-                  color: AppColors.textWhite,
-                  fontSize: AppFonts.fontSize12,
-                ),
-              ),
-            ),
-          ],
-        ],
         ),
       ),
     );
@@ -161,7 +225,7 @@ class MessageBubble extends StatelessWidget {
               Text(
                 message.content,
                 style: TextStyle(
-                  color: _isMe ? AppColors.textWhite : (isDark ? AppColors.textWhite : AppColors.textBlack),
+                  color: _bubbleTextColor,
                   fontSize: AppFonts.fontSize14,
                 ),
               ),
@@ -181,12 +245,12 @@ class MessageBubble extends StatelessWidget {
             const SizedBox(height: AppDimensions.margin4),
             Row(
               children: [
-                const Icon(Icons.play_circle, color: AppColors.textWhite),
+                const Icon(Icons.play_circle, color: AppColors.stemLightText),
                 const SizedBox(width: AppDimensions.margin4),
                 Text(
                   message.content,
                   style: const TextStyle(
-                    color: AppColors.textWhite,
+                    color: AppColors.stemLightText,
                     fontSize: AppFonts.fontSize14,
                   ),
                 ),
@@ -199,12 +263,12 @@ class MessageBubble extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            const Icon(Icons.location_on, color: AppColors.textWhite, size: 40),
+            Icon(Icons.location_on, color: _bubbleTextColor, size: 40),
             const SizedBox(height: AppDimensions.margin4),
             Text(
               'Location Shared',
-              style: const TextStyle(
-                color: AppColors.textWhite,
+              style: TextStyle(
+                color: _bubbleTextColor,
                 fontSize: AppFonts.fontSize14,
               ),
             ),
@@ -215,7 +279,7 @@ class MessageBubble extends StatelessWidget {
         return Text(
           message.content,
           style: TextStyle(
-            color: _isMe ? AppColors.textWhite : (isDark ? AppColors.textWhite : AppColors.textBlack),
+            color: _bubbleTextColor,
             fontSize: AppFonts.fontSize14,
           ),
         );

@@ -5,14 +5,14 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../../core/constants/app_colors.dart';
-import '../../../../core/constants/app_dimensions.dart';
-import '../../../../core/constants/app_fonts.dart';
 import '../../../../data/models/group_model.dart';
 import '../../../../application/group/group_cubit.dart';
 import 'widgets/create_group_widgets.dart';
+import 'widgets/stem_create_group_form.dart';
 
 class CreateGroupPage extends StatefulWidget {
   const CreateGroupPage({super.key});
@@ -24,17 +24,19 @@ class CreateGroupPage extends StatefulWidget {
 class _CreateGroupPageState extends State<CreateGroupPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
-  String _currency = 'PKR';
+  final _descController = TextEditingController();
+  String _currency = 'INR';
   String _category = 'trip';
+  double _radiusKm = 2.5;
   File? _groupImage;
   final _imagePicker = ImagePicker();
-  bool _addTripDates = false;
   DateTime? _tripStartDate;
   DateTime? _tripEndDate;
 
   @override
   void dispose() {
     _nameController.dispose();
+    _descController.dispose();
     super.dispose();
   }
 
@@ -112,10 +114,10 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
     final group = GroupModel(
       id: '',
       name: _nameController.text.trim(),
-      description: '',
+      description: _descController.text.trim(),
       creatorId: '',
       location: location,
-      radius: 2000,
+      radius: _radiusKm * 1000,
       type: 'public',
       currency: _currency,
       memberCount: 0,
@@ -128,8 +130,8 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       ),
       category: _category,
       imageUrl: imageUrl,
-      tripStartDate: _addTripDates ? _tripStartDate : null,
-      tripEndDate: _addTripDates ? _tripEndDate : null,
+      tripStartDate: _tripStartDate,
+      tripEndDate: _tripEndDate,
     );
 
     if (mounted) {
@@ -139,23 +141,29 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
     return Scaffold(
-      backgroundColor: isDark ? AppColors.darkBackground : AppColors.backgroundWhite,
+      backgroundColor: AppColors.stemBackground,
       appBar: AppBar(
+        backgroundColor: AppColors.stemBackground,
         leading: IconButton(
-          icon: const Icon(Icons.close),
+          icon: const Icon(Icons.arrow_back, color: AppColors.stemLightText),
           onPressed: () => context.pop(),
         ),
-        title: const Text('Create a group'),
-        centerTitle: true,
-        actions: [
-          TextButton(
-            onPressed: () => _createGroup(),
-            child: const Text('Done'),
+        title: Text(
+          'Create Group',
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 18,
+            fontWeight: FontWeight.w500,
+            color: AppColors.stemEmerald,
           ),
+        ),
+        actions: [
+          CircleAvatar(
+            radius: 20,
+            backgroundColor: AppColors.stemFormSurface,
+            child: Icon(Icons.person, color: AppColors.stemMutedText, size: 20),
+          ),
+          const SizedBox(width: 24),
         ],
       ),
       body: SafeArea(
@@ -176,139 +184,252 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           }
         },
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(AppDimensions.padding16),
+          padding: const EdgeInsets.fromLTRB(24, 24, 24, 144),
           child: Form(
             key: _formKey,
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Group name + image
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    GroupImagePicker(
-                      imageFile: _groupImage,
-                      isDark: isDark,
-                      onTap: _pickGroupImage,
+                Text(
+                  'Start a New Ledger',
+                  style: GoogleFonts.poppins(
+                    fontSize: 30,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.stemLightText,
+                    letterSpacing: -0.75,
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Organize expenses with precision. Set your\nboundaries, invite members, and keep the\nbalance clear.',
+                  style: GoogleFonts.poppins(
+                    fontSize: 14,
+                    color: AppColors.stemMutedText,
+                    height: 1.6,
+                  ),
+                ),
+                const SizedBox(height: 40),
+                StemFormField(
+                  label: 'GROUP NAME',
+                  child: TextFormField(
+                    controller: _nameController,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: AppColors.stemLightText,
                     ),
-                    const SizedBox(width: AppDimensions.margin12),
-                    Expanded(
-                      child: TextFormField(
-                        controller: _nameController,
-                        decoration: InputDecoration(
-                          hintText: 'Group name',
-                          border: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.textGrey : AppColors.borderGrey,
-                            ),
-                          ),
-                          enabledBorder: UnderlineInputBorder(
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.textGrey : AppColors.borderGrey,
-                            ),
-                          ),
-                          focusedBorder: const UnderlineInputBorder(
-                            borderSide: BorderSide(color: AppColors.primaryGreen, width: 2),
-                          ),
+                    decoration: InputDecoration(
+                      hintText: 'e.g. Summer in Tuscany',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: AppColors.stemMutedText.withValues(alpha: 0.3),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.stemFormSurface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF404944).withValues(alpha: 0.2),
                         ),
-                        validator: (v) =>
-                            (v == null || v.trim().isEmpty) ? 'Enter group name' : null,
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 21,
+                        vertical: 17,
                       ),
                     ),
-                  ],
-                ),
-                const SizedBox(height: AppDimensions.margin24),
-
-                // Type
-                Text(
-                  'Type',
-                  style: TextStyle(
-                    fontSize: AppFonts.fontSize14,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? AppColors.textWhite : AppColors.textBlack,
+                    validator: (v) =>
+                        (v == null || v.trim().isEmpty) ? 'Enter group name' : null,
                   ),
                 ),
-                const SizedBox(height: AppDimensions.margin8),
-                CategoryTypeGrid(
-                  selectedValue: _category,
-                  isDark: isDark,
-                  onSelected: (v) => setState(() => _category = v),
-                ),
-                const SizedBox(height: AppDimensions.margin24),
-
-                // Add trip dates
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      'Add trip dates',
-                      style: TextStyle(
-                        fontSize: AppFonts.fontSize16,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? AppColors.textWhite : AppColors.textBlack,
+                const SizedBox(height: 23),
+                StemFormField(
+                  label: 'GROUP TYPE',
+                  child: Container(
+                    height: 58,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.stemFormSurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF404944).withValues(alpha: 0.2),
                       ),
                     ),
-                    Switch(
-                      value: _addTripDates,
-                      onChanged: (v) => setState(() {
-                        _addTripDates = v;
-                        if (v && _tripStartDate == null) _tripStartDate = DateTime.now();
-                      }),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _category,
+                        isExpanded: true,
+                        dropdownColor: AppColors.stemFormSurface,
+                        icon: Icon(Icons.keyboard_arrow_down,
+                            color: AppColors.stemMutedText),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: AppColors.stemLightText,
+                        ),
+                        items: ['trip', 'home', 'food', 'couple', 'other']
+                            .map((c) => DropdownMenuItem(
+                                  value: c,
+                                  child: Text(c[0].toUpperCase() + c.substring(1)),
+                                ))
+                            .toList(),
+                        onChanged: (v) =>
+                            setState(() => _category = v ?? 'trip'),
+                      ),
                     ),
-                  ],
-                ),
-                Text(
-                  'Splitwise will remind friends to join, add expenses, and settle up.',
-                  style: TextStyle(
-                    fontSize: AppFonts.fontSize12,
-                    color: AppColors.textGrey,
                   ),
                 ),
-                if (_addTripDates) ...[
-                  const SizedBox(height: AppDimensions.margin16),
-                  Row(
+                const SizedBox(height: 23),
+                StemFormField(
+                  label: 'DEFAULT CURRENCY',
+                  child: Container(
+                    height: 58,
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    decoration: BoxDecoration(
+                      color: AppColors.stemFormSurface,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: const Color(0xFF404944).withValues(alpha: 0.2),
+                      ),
+                    ),
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _currency,
+                        isExpanded: true,
+                        dropdownColor: AppColors.stemFormSurface,
+                        icon: Icon(Icons.keyboard_arrow_down,
+                            color: AppColors.stemMutedText),
+                        style: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: AppColors.stemLightText,
+                        ),
+                        items: [
+                          DropdownMenuItem(
+                              value: 'INR', child: Text('INR (₹)')),
+                          DropdownMenuItem(
+                              value: 'PKR', child: Text('PKR (Rs)')),
+                          DropdownMenuItem(
+                              value: 'USD', child: Text('USD (\$)')),
+                        ],
+                        onChanged: (v) =>
+                            setState(() => _currency = v ?? 'INR'),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 23),
+                StemFormField(
+                  label: 'DESCRIPTION',
+                  child: TextFormField(
+                    controller: _descController,
+                    maxLines: 3,
+                    style: GoogleFonts.poppins(
+                      fontSize: 16,
+                      color: AppColors.stemLightText,
+                    ),
+                    decoration: InputDecoration(
+                      hintText: 'What is this group for?',
+                      hintStyle: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: AppColors.stemMutedText.withValues(alpha: 0.3),
+                      ),
+                      filled: true,
+                      fillColor: AppColors.stemFormSurface,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(16),
+                        borderSide: BorderSide(
+                          color: const Color(0xFF404944).withValues(alpha: 0.2),
+                        ),
+                      ),
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 21,
+                        vertical: 17,
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 32),
+                Container(
+                  padding: const EdgeInsets.all(21),
+                  decoration: BoxDecoration(
+                    color: AppColors.stemFormSurface,
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(
+                      color: const Color(0xFF404944).withValues(alpha: 0.1),
+                    ),
+                  ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Expanded(
-                        child: DateRangeField(
-                          label: 'Start',
-                          date: _tripStartDate,
-                          placeholder: 'Today',
-                          onTap: () => _selectDate(true),
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            'GEO-FENCE RADIUS',
+                            style: GoogleFonts.manrope(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryGreen,
+                              letterSpacing: 1.1,
+                            ),
+                          ),
+                          Text(
+                            '${_radiusKm.toStringAsFixed(1)}km',
+                            style: GoogleFonts.poppins(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w700,
+                              color: AppColors.primaryGreen,
+                            ),
+                          ),
+                        ],
                       ),
-                      const SizedBox(width: AppDimensions.margin12),
-                      Expanded(
-                        child: DateRangeField(
-                          label: 'End',
-                          date: _tripEndDate,
-                          placeholder: '',
-                          onTap: () => _selectDate(false),
+                      Slider(
+                        value: _radiusKm,
+                        min: 0.5,
+                        max: 10,
+                        divisions: 19,
+                        activeColor: AppColors.primaryGreen,
+                        onChanged: (v) => setState(() => _radiusKm = v),
+                      ),
+                      Text(
+                        'Automatic expense detection within this radius for\ngroup members.',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          color: AppColors.stemMutedText
+                              .withValues(alpha: 0.6),
                         ),
                       ),
                     ],
                   ),
-                ],
-                const SizedBox(height: AppDimensions.margin24),
-
-                // Currency
+                ),
+                const SizedBox(height: 24),
                 Text(
-                  'Expense Currency',
-                  style: theme.textTheme.titleMedium,
+                  'DATES (OPTIONAL)',
+                  style: GoogleFonts.manrope(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.primaryGreen,
+                    letterSpacing: 1.1,
+                  ),
                 ),
-                const SizedBox(height: AppDimensions.margin8),
-                SegmentedButton<String>(
-                  segments: const [
-                    ButtonSegment(value: 'PKR', label: Text('PKR')),
-                    ButtonSegment(value: 'INR', label: Text('INR')),
-                    ButtonSegment(value: 'USD', label: Text('USD')),
+                const SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: _StemDateField(
+                        label: 'Start Date',
+                        date: _tripStartDate,
+                        onTap: () => _selectDate(true),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: _StemDateField(
+                        label: 'End Date',
+                        date: _tripEndDate,
+                        onTap: () => _selectDate(false),
+                      ),
+                    ),
                   ],
-                  selected: {_currency},
-                  onSelectionChanged: (Set<String> s) =>
-                      setState(() => _currency = s.first),
                 ),
-                const SizedBox(height: AppDimensions.margin32),
-
-                // Create Button
+                const SizedBox(height: 32),
                 BlocBuilder<GroupCubit, GroupState>(
                   builder: (context, state) {
                     return SizedBox(
@@ -317,10 +438,10 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                         onPressed: state is GroupLoading ? null : _createGroup,
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppColors.primaryGreen,
-                          foregroundColor: AppColors.textWhite,
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          foregroundColor: const Color(0xFF002115),
+                          padding: const EdgeInsets.symmetric(vertical: 20),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(AppDimensions.radius12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         child: state is GroupLoading
@@ -329,21 +450,87 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                 width: 24,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
-                                  color: AppColors.textWhite,
+                                  color: Color(0xFF002115),
                                 ),
                               )
-                            : const Text('Create Group'),
+                            : Text(
+                                'Create Group',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
                       ),
                     );
                   },
+                ),
+                const SizedBox(height: 32),
+                Text(
+                  'By creating a group, you agree to the\nledger terms of service',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.stemMutedText.withValues(alpha: 0.4),
+                    letterSpacing: 2,
+                  ),
                 ),
               ],
             ),
           ),
         ),
+        ),
       ),
-    ),
     );
   }
+}
 
+class _StemDateField extends StatelessWidget {
+  final String label;
+  final DateTime? date;
+  final VoidCallback onTap;
+
+  const _StemDateField({
+    required this.label,
+    required this.date,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 13, vertical: 13),
+        decoration: BoxDecoration(
+          color: AppColors.stemBackground,
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: const Color(0xFF404944).withValues(alpha: 0.1),
+          ),
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              date != null
+                  ? '${date!.day}/${date!.month}/${date!.year}'
+                  : label,
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                color: date != null
+                    ? AppColors.stemMutedText
+                    : AppColors.stemMutedText.withValues(alpha: 0.6),
+              ),
+            ),
+            Icon(
+              Icons.calendar_today_outlined,
+              size: 12,
+              color: AppColors.stemMutedText,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
 }

@@ -20,54 +20,99 @@ class ChatInputBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bgColor = isDark ? const Color(0xCC1C1B1B) : AppColors.backgroundWhite;
+    final borderTopColor =
+        isDark ? AppColors.borderGreyDark : AppColors.borderGrey;
+
+    final inputBg = isDark ? AppColors.stemInputBg : AppColors.backgroundGrey;
+
     return Container(
-      padding: const EdgeInsets.all(AppDimensions.padding8),
+      padding: const EdgeInsets.fromLTRB(16, 10, 16, 14),
       decoration: BoxDecoration(
-        color: isDark ? AppColors.darkCard : AppColors.backgroundGrey,
+        color: bgColor,
         border: Border(
-          top: BorderSide(
-            color: isDark ? AppColors.borderGreyDark : AppColors.borderGrey,
-          ),
+          top: BorderSide(color: borderTopColor, width: 1),
         ),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          IconButton(
-            icon: isUploadingImage
-                ? const SizedBox(
-                    width: 24,
-                    height: 24,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : const Icon(Icons.image_outlined),
-            onPressed: isUploadingImage ? null : onPickImage,
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            decoration: BoxDecoration(
+              color: inputBg,
+              borderRadius: BorderRadius.circular(AppDimensions.radius24),
+              border: Border.all(color: borderTopColor.withValues(alpha: 0.7)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                  icon: isUploadingImage
+                      ? const SizedBox(
+                          width: 22,
+                          height: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.image_outlined, size: 20),
+                  onPressed: isUploadingImage ? null : onPickImage,
+                ),
+                IconButton(
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(minWidth: 34, minHeight: 34),
+                  icon: const Icon(Icons.videocam_outlined, size: 20),
+                  onPressed: isUploadingImage ? null : onPickImage,
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           Expanded(
             child: TextField(
               controller: messageController,
+              maxLines: 1,
+              textCapitalization: TextCapitalization.sentences,
+              onSubmitted: (_) => onSend(),
               decoration: InputDecoration(
                 hintText: 'Type a message...',
                 filled: true,
-                fillColor: isDark ? AppColors.darkSurface : AppColors.backgroundWhite,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppDimensions.radius24),
-                  borderSide: BorderSide.none,
-                ),
+                fillColor: inputBg,
                 contentPadding: const EdgeInsets.symmetric(
                   horizontal: AppDimensions.padding16,
-                  vertical: AppDimensions.padding12,
+                  vertical: 12,
+                ),
+                border: OutlineInputBorder(
+                  borderRadius:
+                      BorderRadius.circular(AppDimensions.radius24),
+                  borderSide: BorderSide.none,
                 ),
               ),
-              maxLines: null,
-              textCapitalization: TextCapitalization.sentences,
-              onSubmitted: (_) => onSend(),
             ),
           ),
-          const SizedBox(width: AppDimensions.margin8),
-          CircleAvatar(
-            backgroundColor: AppColors.primaryGreen,
+          const SizedBox(width: 12),
+          Container(
+            width: 46,
+            height: 46,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: LinearGradient(
+                colors: [
+                  AppColors.stemEmerald,
+                  AppColors.primaryGreenDark,
+                ],
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.primaryGreenDark.withValues(alpha: 0.25),
+                  blurRadius: 12,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
             child: IconButton(
-              icon: const Icon(Icons.send, color: AppColors.textWhite),
+              icon: const Icon(Icons.send, color: AppColors.textWhite, size: 20),
               onPressed: onSend,
             ),
           ),

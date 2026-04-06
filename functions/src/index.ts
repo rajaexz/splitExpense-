@@ -88,6 +88,16 @@ export const onNotificationCreated = functions.firestore
       fcmData.currency = (data.currency || "").toString();
       fcmData.senderName = (data.senderName || "").toString();
     }
+    if (
+      (type === "game_turn" ||
+        type === "game_payment" ||
+        type === "game_poke" ||
+        type === "game_winner" ||
+        type === "game_complete") &&
+      data.gameId
+    ) {
+      fcmData.gameId = (data.gameId || "").toString();
+    }
 
     const message: admin.messaging.Message = {
       token: fcmToken,
@@ -112,3 +122,5 @@ export const onNotificationCreated = functions.firestore
       console.error("FCM send error:", err);
     }
   });
+
+export { generateGameContent } from "./generateGameContent";

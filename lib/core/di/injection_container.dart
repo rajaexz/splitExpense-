@@ -17,6 +17,11 @@ import '../../features/community/data/datasources/message_remote_datasource.dart
 import '../../features/community/data/datasources/notification_remote_datasource.dart';
 import '../../features/community/data/datasources/broadcast_video_datasource.dart';
 import '../../features/community/data/datasources/expense_remote_datasource.dart';
+import '../../features/community/data/datasources/group_game_remote_datasource.dart';
+import '../../features/community/data/datasources/game_content_remote_datasource.dart';
+import '../../features/community/data/repositories/group_game_repository_impl.dart';
+import '../../domain/group_game_repository.dart';
+import '../../application/group_game/group_game_cubit.dart';
 import '../../features/community/data/datasources/shared_gallery_datasource.dart';
 import '../../features/community/data/datasources/saved_contacts_datasource.dart';
 import '../../features/community/data/repositories/group_repository_impl.dart';
@@ -124,6 +129,23 @@ Future<void> init() async {
       ),
     );
 
+    sl.registerLazySingleton<GroupGameRemoteDataSource>(
+      () => GroupGameRemoteDataSourceImpl(
+        firestore: sl<FirebaseFirestore>(),
+        auth: sl<firebase_auth.FirebaseAuth>(),
+      ),
+    );
+
+    sl.registerLazySingleton<GroupGameRepository>(
+      () => GroupGameRepositoryImpl(
+        remote: sl<GroupGameRemoteDataSource>(),
+      ),
+    );
+
+    sl.registerLazySingleton<GameContentRemoteDataSource>(
+      () => GameContentRemoteDataSourceImpl(),
+    );
+
     sl.registerLazySingleton<ImageUploadService>(
       () => ImgBBImageUploadService(),
     );
@@ -171,6 +193,15 @@ Future<void> init() async {
     );
     sl.registerFactory(() => ExpenseCubit(sl<ExpenseRemoteDataSource>()));
     sl.registerFactory(() => SharedGalleryCubit(sl<SharedGalleryDataSource>()));
+
+    sl.registerFactory(
+      () => GroupGameCubit(
+        sl<GroupGameRepository>(),
+        sl<NotificationRemoteDataSource>(),
+        sl<GameContentRemoteDataSource>(),
+        sl<FirebaseFirestore>(),
+      ),
+    );
     
     // FCM for push notifications
     sl.registerLazySingleton<FcmService>(() => FcmService());

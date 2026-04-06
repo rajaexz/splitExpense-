@@ -18,6 +18,44 @@ abstract class NotificationRemoteDataSource {
     required double totalAmount,
     String? upiUri,
   });
+
+  Future<void> sendGameTurnNotification({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  });
+
+  Future<void> sendGamePaymentReminder({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  });
+
+  Future<void> sendGamePoke({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  });
+
+  Future<void> sendGameWinnerAnnouncement({
+    required String groupId,
+    required String groupName,
+    required List<String> memberUserIds,
+    required String firstName,
+    required String secondName,
+    required String thirdName,
+    required String gameId,
+  });
+
+  Future<void> sendGameCompleteNotification({
+    required String groupId,
+    required String groupName,
+    required List<String> memberUserIds,
+    required String gameId,
+  });
 }
 
 class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
@@ -137,6 +175,165 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         'title': 'Payment Reminder',
         'body': '$senderName is requesting $amountStr. Scan QR to pay.',
         'data': data,
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  @override
+  Future<void> sendGameTurnNotification({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  }) async {
+    final ref = _firestore
+        .collection('notifications')
+        .doc(targetUserId)
+        .collection('notifications')
+        .doc();
+    await ref.set({
+      'id': ref.id,
+      'userId': targetUserId,
+      'type': 'game_turn',
+      'title': 'Your turn',
+      'body': 'It\'s your turn to ask a question in $groupName.',
+      'data': {
+        'groupId': groupId,
+        'groupName': groupName,
+        'gameId': gameId,
+      },
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> sendGamePaymentReminder({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  }) async {
+    final ref = _firestore
+        .collection('notifications')
+        .doc(targetUserId)
+        .collection('notifications')
+        .doc();
+    await ref.set({
+      'id': ref.id,
+      'userId': targetUserId,
+      'type': 'game_payment',
+      'title': 'Complete payment',
+      'body':
+          'Please complete your payment for the group game in $groupName so everyone can continue.',
+      'data': {
+        'groupId': groupId,
+        'groupName': groupName,
+        'gameId': gameId,
+      },
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> sendGamePoke({
+    required String groupId,
+    required String groupName,
+    required String targetUserId,
+    required String gameId,
+  }) async {
+    final ref = _firestore
+        .collection('notifications')
+        .doc(targetUserId)
+        .collection('notifications')
+        .doc();
+    await ref.set({
+      'id': ref.id,
+      'userId': targetUserId,
+      'type': 'game_poke',
+      'title': 'Payment nudge',
+      'body':
+          'Friendly reminder from $groupName: your share is still waiting. Tap in and save the game!',
+      'data': {
+        'groupId': groupId,
+        'groupName': groupName,
+        'gameId': gameId,
+      },
+      'read': false,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+  }
+
+  @override
+  Future<void> sendGameWinnerAnnouncement({
+    required String groupId,
+    required String groupName,
+    required List<String> memberUserIds,
+    required String firstName,
+    required String secondName,
+    required String thirdName,
+    required String gameId,
+  }) async {
+    if (memberUserIds.isEmpty) return;
+    final batch = _firestore.batch();
+    final body =
+        'We have our podium: 1st $firstName, 2nd $secondName, 3rd $thirdName. Thanks for playing!';
+    for (final userId in memberUserIds.toSet()) {
+      final ref = _firestore
+          .collection('notifications')
+          .doc(userId)
+          .collection('notifications')
+          .doc();
+      batch.set(ref, {
+        'id': ref.id,
+        'userId': userId,
+        'type': 'game_winner',
+        'title': 'Game complete',
+        'body': body,
+        'data': {
+          'groupId': groupId,
+          'groupName': groupName,
+          'gameId': gameId,
+        },
+        'read': false,
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+    }
+    await batch.commit();
+  }
+
+  @override
+  Future<void> sendGameCompleteNotification({
+    required String groupId,
+    required String groupName,
+    required List<String> memberUserIds,
+    required String gameId,
+  }) async {
+    if (memberUserIds.isEmpty) return;
+    final batch = _firestore.batch();
+    final body =
+        'The question game in $groupName is finished. Thank you all for playing!';
+    for (final userId in memberUserIds.toSet()) {
+      final ref = _firestore
+          .collection('notifications')
+          .doc(userId)
+          .collection('notifications')
+          .doc();
+      batch.set(ref, {
+        'id': ref.id,
+        'userId': userId,
+        'type': 'game_complete',
+        'title': 'Thanks everyone',
+        'body': body,
+        'data': {
+          'groupId': groupId,
+          'groupName': groupName,
+          'gameId': gameId,
+        },
         'read': false,
         'createdAt': FieldValue.serverTimestamp(),
       });

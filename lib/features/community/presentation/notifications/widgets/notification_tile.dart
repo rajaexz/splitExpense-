@@ -19,6 +19,25 @@ class NotificationTile extends StatelessWidget {
     this.onClearGroup,
   });
 
+  IconData _iconForType(String type) {
+    switch (type) {
+      case 'group_message':
+        return Icons.group;
+      case 'game_turn':
+        return Icons.quiz_outlined;
+      case 'game_payment':
+        return Icons.payment_outlined;
+      case 'game_poke':
+        return Icons.nightlight_round;
+      case 'game_winner':
+        return Icons.emoji_events_outlined;
+      case 'game_complete':
+        return Icons.celebration_outlined;
+      default:
+        return Icons.notifications;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -48,7 +67,7 @@ class NotificationTile extends StatelessWidget {
                 shape: BoxShape.circle,
               ),
               child: Icon(
-                isGroupMessage ? Icons.group : Icons.notifications,
+                isGroupMessage ? Icons.group : _iconForType(notification.type),
                 color: AppColors.primaryGreen,
                 size: 24,
               ),

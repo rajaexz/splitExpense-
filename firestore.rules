@@ -98,8 +98,21 @@ service cloud.firestore {
         isGroupMember();
     }
     
-    // Expenses - subcollection under groups (trip expense tracking)
-    match /groups/{groupId}/expenses/{expenseId} {
+      // Group question games - subcollection under groups
+      match /groups/{groupId}/games/{gameId} {
+        function isGroupMemberGame() {
+          return isAuthenticated() &&
+            get(/databases/$(database)/documents/groups/$(groupId)).data.members[request.auth.uid] != null;
+        }
+        allow read: if isGroupMemberGame();
+        allow create: if isAuthenticated() &&
+          request.resource.data.hostId == request.auth.uid &&
+          isGroupMemberGame();
+        allow update, delete: if isGroupMemberGame();
+      }
+
+      // Expenses - subcollection under groups (trip expense tracking)
+      match /groups/{groupId}/expenses/{expenseId} {
       // Helper function to check if user is a group member
       function isGroupMember() {
         return isAuthenticated() && 

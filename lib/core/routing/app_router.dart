@@ -32,6 +32,8 @@ import '../../features/community/presentation/auth/settings_page.dart';
 import '../../../features/community/presentation/group_history/group_history_page.dart';
 import '../../../features/community/presentation/payment/request_payment_qr_page.dart';
 import '../../../features/community/presentation/payment/payment_request_view_page.dart';
+import '../../../features/community/presentation/group_game/group_game_page.dart';
+import '../../application/group_game/group_game_cubit.dart';
 import '../../data/models/user_model.dart';
 import '../../application/group/group_cubit.dart';
 import '../../application/message/message_cubit.dart';
@@ -306,6 +308,34 @@ class AppRouter {
             groupName: args['groupName'] as String?,
             groupId: args['groupId'] as String?,
             membersWhoOwe: membersWhoOwe,
+          );
+        },
+      ),
+
+      // Group question game
+      GoRoute(
+        path: '${AppRoutes.groupGame}/:groupId/:gameId',
+        name: 'group-game',
+        builder: (context, state) {
+          final groupId = state.pathParameters['groupId']!;
+          final gameId = state.pathParameters['gameId']!;
+          final extra = state.extra as Map<String, dynamic>?;
+          final groupName = extra?['groupName'] as String?;
+          return BlocProvider(
+            create: (context) {
+              final cubit = di.sl<GroupGameCubit>();
+              cubit.subscribe(
+                groupId: groupId,
+                gameId: gameId,
+                groupName: groupName,
+              );
+              return cubit;
+            },
+            child: GroupGamePage(
+              groupId: groupId,
+              gameId: gameId,
+              groupName: groupName,
+            ),
           );
         },
       ),

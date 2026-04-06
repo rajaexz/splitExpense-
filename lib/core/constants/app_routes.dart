@@ -47,6 +47,7 @@ class AppRoutes {
   static const String expenseDetail = '/expense-detail';
   static const String requestPaymentQr = '/request-payment-qr';
   static const String paymentRequestView = '/payment-request-view';
+  static const String groupGame = '/group-game';
 
   // Shared Gallery
   static const String shareGallery = '/share-gallery';

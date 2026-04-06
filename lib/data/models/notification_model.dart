@@ -37,6 +37,7 @@ class NotificationModel {
 
   String? get groupId => data['groupId'] as String?;
   String? get groupName => data['groupName'] as String?;
+  String? get gameId => data['gameId'] as String?;
   String? get senderName => data['senderName'] as String?;
   String? get upiUri => data['upiUri'] as String?;
   double? get amount => (data['amount'] as num?)?.toDouble();

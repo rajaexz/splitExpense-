@@ -11,9 +11,104 @@ import '../../../../data/models/group_model.dart';
 import '../../../../application/group/group_cubit.dart';
 import '../../../../application/addExpense/expense_cubit.dart';
 import '../../../../data/models/expense_model.dart';
+import '../../../../domain/group_game_repository.dart';
 import '../../data/datasources/group_remote_datasource.dart';
 import 'widgets/group_detail_widgets.dart';
 import 'widgets/settle_up_sheet.dart';
+
+Future<void> openGroupQuestionGame(
+  BuildContext context, {
+  required String groupId,
+  required GroupModel group,
+}) async {
+  if (!di.sl.isRegistered<GroupGameRepository>()) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Firebase is not available.')),
+    );
+    return;
+  }
+  final uid = FirebaseAuth.instance.currentUser?.uid;
+  if (uid == null) return;
+  final repo = di.sl<GroupGameRepository>();
+  final latest = await repo.getLatestGameId(groupId);
+  if (latest != null) {
+    if (!context.mounted) return;
+    context.pushNamed(
+      'group-game',
+      pathParameters: {'groupId': groupId, 'gameId': latest},
+      extra: {'groupName': group.name},
+    );
+    return;
+  }
+  if (group.creatorId != uid) {
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Ask the group admin to start a question game.'),
+      ),
+    );
+    return;
+  }
+  final amount = await showDialog<double>(
+    context: context,
+    builder: (ctx) {
+      final c = TextEditingController();
+      return AlertDialog(
+        backgroundColor: AppColors.stemCard,
+        title: Text(
+          'Per person amount',
+          style: GoogleFonts.plusJakartaSans(
+            color: AppColors.stemLightText,
+            fontWeight: FontWeight.w800,
+          ),
+        ),
+        content: TextField(
+          controller: c,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          style: const TextStyle(color: AppColors.stemLightText),
+          decoration: InputDecoration(
+            labelText: 'Amount',
+            labelStyle: const TextStyle(color: AppColors.stemMutedText),
+            enabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide(
+                color: AppColors.borderGreyDark.withValues(alpha: 0.4),
+              ),
+            ),
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, double.tryParse(c.text.trim())),
+            child: const Text('Create'),
+          ),
+        ],
+      );
+    },
+  );
+  if (amount == null || amount <= 0) return;
+  final others = group.members.keys.where((id) => id != group.creatorId).toList()
+    ..sort();
+  final memberOrder = [group.creatorId, ...others];
+  final gameId = await repo.createGame(
+    groupId: groupId,
+    hostId: uid,
+    perPersonAmount: amount,
+    currency: group.currency,
+    memberOrder: memberOrder,
+  );
+  if (!context.mounted) return;
+  context.pushNamed(
+    'group-game',
+    pathParameters: {'groupId': groupId, 'gameId': gameId},
+    extra: {'groupName': group.name},
+  );
+}
 
 class GroupDetailPage extends StatelessWidget {
   final String groupId;
@@ -652,28 +747,42 @@ class _ActionButtons extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    return Column(
       children: [
-        Expanded(
-          child: _StemActionButton(
-            icon: Icons.chat_bubble_outline,
-            label: 'Open Chat',
-            onTap: () => context.push(
-              '${AppRoutes.chat}/$groupId?name=${Uri.encodeComponent(group.name)}',
+        Row(
+          children: [
+            Expanded(
+              child: _StemActionButton(
+                icon: Icons.chat_bubble_outline,
+                label: 'Open Chat',
+                onTap: () => context.push(
+                  '${AppRoutes.chat}/$groupId?name=${Uri.encodeComponent(group.name)}',
+                ),
+              ),
             ),
-          ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: _StemActionButton(
+                icon: Icons.person_add_outlined,
+                label: 'Add\nMember',
+                onTap: () => AddMemberOptionsSheet.show(
+                  context,
+                  groupId: groupId,
+                  groupName: group.name,
+                  isDark: true,
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _StemActionButton(
-            icon: Icons.person_add_outlined,
-            label: 'Add\nMember',
-            onTap: () => AddMemberOptionsSheet.show(
-              context,
-              groupId: groupId,
-              groupName: group.name,
-              isDark: true,
-            ),
+        const SizedBox(height: 12),
+        _StemActionButton(
+          icon: Icons.quiz_outlined,
+          label: 'Question game',
+          onTap: () => openGroupQuestionGame(
+            context,
+            groupId: groupId,
+            group: group,
           ),
         ),
       ],

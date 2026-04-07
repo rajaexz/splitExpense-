@@ -48,6 +48,11 @@ class UserProfilePage extends StatelessWidget {
           final data = doc?.data() as Map<String, dynamic>?;
           final name = data?['name'] ?? data?['displayName'] ?? data?['email'] ?? 'User';
           final email = data?['email'] ?? '';
+          final phone = (data?['phone'] ??
+                  data?['phoneNumber'] ??
+                  data?['mobile'] ??
+                  data?['contact']) as String? ??
+              '';
           final photoUrl = data?['avatarUrl'] ?? data?['photoURL'] ?? data?['photoUrl'] as String?;
 
           return Center(
@@ -77,6 +82,17 @@ class UserProfilePage extends StatelessWidget {
                     const SizedBox(height: 8),
                     Text(
                       email,
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: AppFonts.fontSize14,
+                        color: AppColors.textGrey,
+                      ),
+                    ),
+                  ],
+                  if (phone.toString().trim().isNotEmpty) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      phone.toString().trim(),
                       textAlign: TextAlign.center,
                       style: TextStyle(
                         fontSize: AppFonts.fontSize14,

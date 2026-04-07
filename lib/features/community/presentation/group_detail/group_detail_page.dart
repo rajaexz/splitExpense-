@@ -13,6 +13,7 @@ import '../../../../application/addExpense/expense_cubit.dart';
 import '../../../../data/models/expense_model.dart';
 import '../../../../domain/group_game_repository.dart';
 import '../../data/datasources/group_remote_datasource.dart';
+import 'group_game_detail_page.dart';
 import 'widgets/group_detail_widgets.dart';
 import 'widgets/settle_up_sheet.dart';
 
@@ -33,6 +34,11 @@ Future<void> openGroupQuestionGame(
   final repo = di.sl<GroupGameRepository>();
   final latest = await repo.getLatestGameId(groupId);
   if (latest != null) {
+    await syncMissingMembersIntoGame(
+      groupId: groupId,
+      group: group,
+      gameId: latest,
+    );
     if (!context.mounted) return;
     context.pushNamed(
       'group-game',
@@ -50,7 +56,10 @@ Future<void> openGroupQuestionGame(
     );
     return;
   }
-  final amount = await showDialog<double>(
+  final defaultAmount = group.gamePerPersonAmount;
+  final amount = (defaultAmount != null && defaultAmount > 0)
+      ? defaultAmount
+      : await showDialog<double>(
     context: context,
     builder: (ctx) {
       final c = TextEditingController();
@@ -515,6 +524,21 @@ class _StemGroupDetailBody extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (group.category.toLowerCase() == 'game') {
+      return GameGroupDetailBody(
+        group: group,
+        groupId: groupId,
+        currentUserId: currentUserId,
+        onBack: () => context.pop(),
+        onMenu: () => _showGroupActions(
+          context,
+          group: group,
+          groupId: groupId,
+          currentUserId: currentUserId,
+        ),
+      );
+    }
+
     final isCreator = group.creatorId == currentUserId;
     final isMember = group.members.containsKey(currentUserId);
 
@@ -775,16 +799,18 @@ class _ActionButtons extends StatelessWidget {
             ),
           ],
         ),
-        const SizedBox(height: 12),
-        _StemActionButton(
-          icon: Icons.quiz_outlined,
-          label: 'Question game',
-          onTap: () => openGroupQuestionGame(
-            context,
-            groupId: groupId,
-            group: group,
+        if (group.category.toLowerCase() == 'game') ...[
+          const SizedBox(height: 12),
+          _StemActionButton(
+            icon: Icons.quiz_outlined,
+            label: 'Question game',
+            onTap: () => openGroupQuestionGame(
+              context,
+              groupId: groupId,
+              group: group,
+            ),
           ),
-        ),
+        ],
       ],
     );
   }

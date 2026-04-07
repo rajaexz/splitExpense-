@@ -15,7 +15,9 @@ import 'widgets/create_group_widgets.dart';
 import 'widgets/stem_create_group_form.dart';
 
 class CreateGroupPage extends StatefulWidget {
-  const CreateGroupPage({super.key});
+  final String? initialCategory;
+
+  const CreateGroupPage({super.key, this.initialCategory});
 
   @override
   State<CreateGroupPage> createState() => _CreateGroupPageState();
@@ -25,6 +27,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _descController = TextEditingController();
+  final _gameAmountController = TextEditingController();
   String _currency = 'INR';
   String _category = 'trip';
   double _radiusKm = 2.5;
@@ -32,11 +35,23 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
   final _imagePicker = ImagePicker();
   DateTime? _tripStartDate;
   DateTime? _tripEndDate;
+  bool get _isGameModeEntry =>
+      widget.initialCategory?.trim().toLowerCase() == 'game';
+
+  @override
+  void initState() {
+    super.initState();
+    final c = widget.initialCategory?.trim().toLowerCase();
+    if (c != null && c.isNotEmpty) {
+      _category = c;
+    }
+  }
 
   @override
   void dispose() {
     _nameController.dispose();
     _descController.dispose();
+    _gameAmountController.dispose();
     super.dispose();
   }
 
@@ -132,6 +147,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
       imageUrl: imageUrl,
       tripStartDate: _tripStartDate,
       tripEndDate: _tripEndDate,
+      gamePerPersonAmount: _category == 'game'
+          ? double.tryParse(_gameAmountController.text.trim())
+          : null,
     );
 
     if (mounted) {
@@ -150,7 +168,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
           onPressed: () => context.pop(),
         ),
         title: Text(
-          'Create Group',
+          _isGameModeEntry ? 'Create Game Group' : 'Create Group',
           style: GoogleFonts.plusJakartaSans(
             fontSize: 18,
             fontWeight: FontWeight.w500,
@@ -191,7 +209,7 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Start a New Ledger',
+                  _isGameModeEntry ? 'Create a Question Game Group' : 'Start a New Ledger',
                   style: GoogleFonts.poppins(
                     fontSize: 30,
                     fontWeight: FontWeight.w700,
@@ -201,7 +219,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'Organize expenses with precision. Set your\nboundaries, invite members, and keep the\nbalance clear.',
+                  _isGameModeEntry
+                      ? 'Create a dedicated game group. Set per-person game amount,\ninvite members, and start the turn-based question game.'
+                      : 'Organize expenses with precision. Set your\nboundaries, invite members, and keep the\nbalance clear.',
                   style: GoogleFonts.poppins(
                     fontSize: 14,
                     color: AppColors.stemMutedText,
@@ -258,20 +278,25 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                         value: _category,
                         isExpanded: true,
                         dropdownColor: AppColors.stemFormSurface,
-                        icon: Icon(Icons.keyboard_arrow_down,
-                            color: AppColors.stemMutedText),
+                        icon: Icon(
+                          _isGameModeEntry
+                              ? Icons.lock_outline
+                              : Icons.keyboard_arrow_down,
+                          color: AppColors.stemMutedText,
+                        ),
                         style: GoogleFonts.poppins(
                           fontSize: 16,
                           color: AppColors.stemLightText,
                         ),
-                        items: ['trip', 'home', 'food', 'couple', 'other']
+                        items: ['trip', 'home', 'food', 'couple', 'game', 'other']
                             .map((c) => DropdownMenuItem(
                                   value: c,
                                   child: Text(c[0].toUpperCase() + c.substring(1)),
                                 ))
                             .toList(),
-                        onChanged: (v) =>
-                            setState(() => _category = v ?? 'trip'),
+                        onChanged: _isGameModeEntry
+                            ? null
+                            : (v) => setState(() => _category = v ?? 'trip'),
                       ),
                     ),
                   ),
@@ -315,8 +340,50 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                   ),
                 ),
                 const SizedBox(height: 23),
+                if (_category == 'game') ...[
+                  StemFormField(
+                    label: 'GAME AMOUNT PER PERSON (REQUIRED)',
+                    child: TextFormField(
+                      controller: _gameAmountController,
+                      keyboardType:
+                          const TextInputType.numberWithOptions(decimal: true),
+                      style: GoogleFonts.poppins(
+                        fontSize: 16,
+                        color: AppColors.stemLightText,
+                      ),
+                      decoration: InputDecoration(
+                        hintText: 'e.g. 100',
+                        hintStyle: GoogleFonts.poppins(
+                          fontSize: 16,
+                          color: AppColors.stemMutedText.withValues(alpha: 0.3),
+                        ),
+                        filled: true,
+                        fillColor: AppColors.stemFormSurface,
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(16),
+                          borderSide: BorderSide(
+                            color: const Color(0xFF404944).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 21,
+                          vertical: 17,
+                        ),
+                      ),
+                      validator: (v) {
+                        if (_category != 'game') return null;
+                        final n = double.tryParse((v ?? '').trim());
+                        if (n == null || n <= 0) {
+                          return 'Enter valid game amount';
+                        }
+                        return null;
+                      },
+                    ),
+                  ),
+                  const SizedBox(height: 23),
+                ],
                 StemFormField(
-                  label: 'DESCRIPTION',
+                  label: _category == 'game' ? 'GAME DESCRIPTION' : 'DESCRIPTION',
                   child: TextFormField(
                     controller: _descController,
                     maxLines: 3,
@@ -325,7 +392,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                       color: AppColors.stemLightText,
                     ),
                     decoration: InputDecoration(
-                      hintText: 'What is this group for?',
+                      hintText: _category == 'game'
+                          ? 'e.g. Office Friday question challenge'
+                          : 'What is this group for?',
                       hintStyle: GoogleFonts.poppins(
                         fontSize: 16,
                         color: AppColors.stemMutedText.withValues(alpha: 0.3),
@@ -345,8 +414,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                     ),
                   ),
                 ),
-                const SizedBox(height: 32),
-                Container(
+                if (_category != 'game') ...[
+                  const SizedBox(height: 32),
+                  Container(
                   padding: const EdgeInsets.all(21),
                   decoration: BoxDecoration(
                     color: AppColors.stemFormSurface,
@@ -398,37 +468,38 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                       ),
                     ],
                   ),
-                ),
-                const SizedBox(height: 24),
-                Text(
-                  'DATES (OPTIONAL)',
-                  style: GoogleFonts.manrope(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: AppColors.primaryGreen,
-                    letterSpacing: 1.1,
                   ),
-                ),
-                const SizedBox(height: 16),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _StemDateField(
-                        label: 'Start Date',
-                        date: _tripStartDate,
-                        onTap: () => _selectDate(true),
-                      ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'DATES (OPTIONAL)',
+                    style: GoogleFonts.manrope(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.primaryGreen,
+                      letterSpacing: 1.1,
                     ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: _StemDateField(
-                        label: 'End Date',
-                        date: _tripEndDate,
-                        onTap: () => _selectDate(false),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _StemDateField(
+                          label: 'Start Date',
+                          date: _tripStartDate,
+                          onTap: () => _selectDate(true),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _StemDateField(
+                          label: 'End Date',
+                          date: _tripEndDate,
+                          onTap: () => _selectDate(false),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
                 const SizedBox(height: 32),
                 BlocBuilder<GroupCubit, GroupState>(
                   builder: (context, state) {
@@ -454,7 +525,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                                 ),
                               )
                             : Text(
-                                'Create Group',
+                                _isGameModeEntry
+                                    ? 'Create Game Group'
+                                    : 'Create Group',
                                 style: GoogleFonts.poppins(
                                   fontSize: 16,
                                   fontWeight: FontWeight.w700,
@@ -466,7 +539,9 @@ class _CreateGroupPageState extends State<CreateGroupPage> {
                 ),
                 const SizedBox(height: 32),
                 Text(
-                  'By creating a group, you agree to the\nledger terms of service',
+                  _isGameModeEntry
+                      ? 'By creating a game group, you agree to\nthe game terms of service'
+                      : 'By creating a group, you agree to the\nledger terms of service',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.poppins(
                     fontSize: 10,

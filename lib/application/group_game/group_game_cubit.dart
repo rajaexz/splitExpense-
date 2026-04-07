@@ -93,6 +93,26 @@ class GroupGameCubit extends Cubit<GroupGameState> {
     }
   }
 
+  /// Host only: mark whether [memberUserId] agreed to the amount (setup phase).
+  Future<void> hostSetMemberAmountAgreed(
+    String memberUserId,
+    bool agreed,
+  ) async {
+    final gid = _groupId;
+    final gameId = _gameId;
+    if (gid == null || gameId == null) return;
+    try {
+      await _repository.setAmountAgreedForMember(
+        groupId: gid,
+        gameId: gameId,
+        memberUserId: memberUserId,
+        agreed: agreed,
+      );
+    } catch (e) {
+      emit(GroupGameError(e.toString()));
+    }
+  }
+
   Future<void> setPaid({required bool paid}) async {
     final uid = _auth.currentUser?.uid;
     final gid = _groupId;
@@ -150,11 +170,20 @@ class GroupGameCubit extends Cubit<GroupGameState> {
       if (game != null) {
         final nextId = game.currentTurnUserId();
         if (nextId != null) {
+          final gname = _groupName ?? 'Group';
+          final names = await _loadDisplayNames([nextId]);
+          final recipient = _recipientFirstName(names[nextId]);
+          final turnBody = await _aiBodyOrFallback(
+            kind: 'turn_reminder',
+            fallback: _fallbackTurnBody(gname),
+            extra: {'recipientName': recipient},
+          );
           await _notifications.sendGameTurnNotification(
             groupId: gid,
-            groupName: _groupName ?? 'Group',
+            groupName: gname,
             targetUserId: nextId,
             gameId: gameId,
+            body: turnBody,
           );
         }
       }
@@ -163,21 +192,20 @@ class GroupGameCubit extends Cubit<GroupGameState> {
     }
   }
 
+  /// Persists interests for the current user. Does not emit [GroupGameError] — callers should show SnackBar on failure.
   Future<void> setInterestsForSelf(String text) async {
     final uid = _auth.currentUser?.uid;
     final gid = _groupId;
     final gameId = _gameId;
-    if (uid == null || gid == null || gameId == null) return;
-    try {
-      await _repository.setInterestsForUser(
-        groupId: gid,
-        gameId: gameId,
-        userId: uid,
-        interestsText: text.trim(),
-      );
-    } catch (e) {
-      emit(GroupGameError(e.toString()));
+    if (uid == null || gid == null || gameId == null) {
+      throw StateError('Not signed in or game not loaded');
     }
+    await _repository.setInterestsForUser(
+      groupId: gid,
+      gameId: gameId,
+      userId: uid,
+      interestsText: text.trim(),
+    );
   }
 
   Future<String?> generateQuestion({required bool favoriteMode}) async {
@@ -209,7 +237,11 @@ class GroupGameCubit extends Cubit<GroupGameState> {
     }
   }
 
-  Future<void> submitQuestion() async {
+  Future<void> submitQuestion({
+    required String questionText,
+    required List<String> options,
+    required int correctOptionIndex,
+  }) async {
     final uid = _auth.currentUser?.uid;
     final gid = _groupId;
     final gameId = _gameId;
@@ -219,21 +251,67 @@ class GroupGameCubit extends Cubit<GroupGameState> {
         groupId: gid,
         gameId: gameId,
         userId: uid,
+        questionText: questionText,
+        options: options,
+        correctOptionIndex: correctOptionIndex,
       );
       final gameAfter = await _repository.getGame(gid, gameId);
-      if (gameAfter != null &&
-          gameAfter.status == GroupGameStatus.active &&
+      if (gameAfter == null) return;
+      final gname = _groupName ?? 'Group';
+
+      if (gameAfter.status == GroupGameStatus.completed &&
+          gameAfter.questionCount >= 10) {
+        final completeBody = await _aiBodyOrFallback(
+          kind: 'game_complete',
+          fallback: _fallbackGameCompleteBody(gname),
+        );
+        await _notifications.sendGameCompleteNotification(
+          groupId: gid,
+          groupName: gname,
+          memberUserIds: gameAfter.memberOrder,
+          gameId: gameId,
+          body: completeBody,
+        );
+        return;
+      }
+
+      if (gameAfter.status == GroupGameStatus.active &&
           gameAfter.questionCount < 10) {
         final nextId = gameAfter.currentTurnUserId();
         if (nextId != null) {
+          final names = await _loadDisplayNames([nextId]);
+          final recipient = _recipientFirstName(names[nextId]);
+          final turnBody = await _aiBodyOrFallback(
+            kind: 'turn_reminder',
+            fallback: _fallbackTurnBody(gname),
+            extra: {'recipientName': recipient},
+          );
           await _notifications.sendGameTurnNotification(
             groupId: gid,
-            groupName: _groupName ?? 'Group',
+            groupName: gname,
             targetUserId: nextId,
             gameId: gameId,
+            body: turnBody,
           );
         }
       }
+    } catch (e) {
+      emit(GroupGameError(e.toString()));
+    }
+  }
+
+  Future<void> submitAnswer({required String answerText}) async {
+    final uid = _auth.currentUser?.uid;
+    final gid = _groupId;
+    final gameId = _gameId;
+    if (uid == null || gid == null || gameId == null) return;
+    try {
+      await _repository.submitAnswer(
+        groupId: gid,
+        gameId: gameId,
+        userId: uid,
+        answerText: answerText,
+      );
     } catch (e) {
       emit(GroupGameError(e.toString()));
     }
@@ -258,14 +336,25 @@ class GroupGameCubit extends Cubit<GroupGameState> {
       final game = await _repository.getGame(gid, gameId);
       final members = game?.memberOrder ?? [];
       final names = await _resolveWinnerNames(firstId, secondId, thirdId);
+      final gname = _groupName ?? 'Group';
+      final winnerBody = await _aiBodyOrFallback(
+        kind: 'winner_announcement',
+        fallback: _fallbackWinnerBody(names[0], names[1], names[2]),
+        extra: {
+          'firstName': names[0],
+          'secondName': names[1],
+          'thirdName': names[2],
+        },
+      );
       await _notifications.sendGameWinnerAnnouncement(
         groupId: gid,
-        groupName: _groupName ?? 'Group',
+        groupName: gname,
         memberUserIds: members,
         firstName: names[0],
         secondName: names[1],
         thirdName: names[2],
         gameId: gameId,
+        body: winnerBody,
       );
     } catch (e) {
       emit(GroupGameError(e.toString()));
@@ -285,11 +374,20 @@ class GroupGameCubit extends Cubit<GroupGameState> {
     final gid = _groupId;
     final gameId = _gameId;
     if (gid == null || gameId == null) return;
+    final gname = _groupName ?? 'Group';
+    final names = await _loadDisplayNames([targetUserId]);
+    final recipient = _recipientFirstName(names[targetUserId]);
+    final body = await _aiBodyOrFallback(
+      kind: 'payment_reminder',
+      fallback: _fallbackPaymentReminderBody(gname),
+      extra: {'recipientName': recipient},
+    );
     await _notifications.sendGamePaymentReminder(
       groupId: gid,
-      groupName: _groupName ?? 'Group',
+      groupName: gname,
       targetUserId: targetUserId,
       gameId: gameId,
+      body: body,
     );
   }
 
@@ -297,13 +395,70 @@ class GroupGameCubit extends Cubit<GroupGameState> {
     final gid = _groupId;
     final gameId = _gameId;
     if (gid == null || gameId == null) return;
+    final gname = _groupName ?? 'Group';
+    final names = await _loadDisplayNames([targetUserId]);
+    final recipient = _recipientFirstName(names[targetUserId]);
+    final body = await _aiBodyOrFallback(
+      kind: 'poke',
+      fallback: _fallbackPokeBody(gname),
+      extra: {'recipientName': recipient},
+    );
     await _notifications.sendGamePoke(
       groupId: gid,
-      groupName: _groupName ?? 'Group',
+      groupName: gname,
       targetUserId: targetUserId,
       gameId: gameId,
+      body: body,
     );
   }
+
+  String _recipientFirstName(String? displayName) {
+    final s = displayName?.trim() ?? '';
+    if (s.isEmpty) return 'Friend';
+    return s.split(RegExp(r'\s+')).first;
+  }
+
+  Future<String> _aiBodyOrFallback({
+    required String kind,
+    required String fallback,
+    Map<String, dynamic>? extra,
+  }) async {
+    final gid = _groupId;
+    if (gid == null) return fallback;
+    try {
+      final payload = <String, dynamic>{
+        'kind': kind,
+        'groupId': gid,
+        'groupName': _groupName ?? 'Group',
+        ...?extra,
+      };
+      final text = await _gameContent.generateGameContent(payload);
+      final t = text.trim();
+      if (t.isEmpty) return fallback;
+      return t;
+    } catch (_) {
+      return fallback;
+    }
+  }
+
+  static String _fallbackTurnBody(String groupName) =>
+      "It's your turn to ask a question in $groupName.";
+
+  static String _fallbackPaymentReminderBody(String groupName) =>
+      'Please complete your payment for the group game in $groupName so everyone can continue.';
+
+  static String _fallbackPokeBody(String groupName) =>
+      'Friendly reminder from $groupName: your share is still waiting. Tap in and save the game!';
+
+  static String _fallbackWinnerBody(
+    String firstName,
+    String secondName,
+    String thirdName,
+  ) =>
+      'We have our podium: 1st $firstName, 2nd $secondName, 3rd $thirdName. Thanks for playing!';
+
+  static String _fallbackGameCompleteBody(String groupName) =>
+      'The question game in $groupName is finished. Thank you all for playing!';
 
   @override
   Future<void> close() {

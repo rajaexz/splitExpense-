@@ -13,6 +13,7 @@ class AppRoutes {
   
   // Home Routes
   static const String home = '/home';
+  static const String gameGroups = '/game-groups';
   static const String search = '/search';
   static const String jobDetails = '/job-details';
   

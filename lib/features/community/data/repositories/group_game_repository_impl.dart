@@ -63,6 +63,20 @@ class GroupGameRepositoryImpl implements GroupGameRepository {
       );
 
   @override
+  Future<void> setAmountAgreedForMember({
+    required String groupId,
+    required String gameId,
+    required String memberUserId,
+    required bool agreed,
+  }) =>
+      _remote.setAmountAgreedForMember(
+        groupId: groupId,
+        gameId: gameId,
+        memberUserId: memberUserId,
+        agreed: agreed,
+      );
+
+  @override
   Future<void> setPaid({
     required String groupId,
     required String gameId,
@@ -101,11 +115,31 @@ class GroupGameRepositoryImpl implements GroupGameRepository {
     required String groupId,
     required String gameId,
     required String userId,
+    required String questionText,
+    required List<String> options,
+    required int correctOptionIndex,
   }) =>
       _remote.submitQuestion(
         groupId: groupId,
         gameId: gameId,
         userId: userId,
+        questionText: questionText,
+        options: options,
+        correctOptionIndex: correctOptionIndex,
+      );
+
+  @override
+  Future<void> submitAnswer({
+    required String groupId,
+    required String gameId,
+    required String userId,
+    required String answerText,
+  }) =>
+      _remote.submitAnswer(
+        groupId: groupId,
+        gameId: gameId,
+        userId: userId,
+        answerText: answerText,
       );
 
   @override

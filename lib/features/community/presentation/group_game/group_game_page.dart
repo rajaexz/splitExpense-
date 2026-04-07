@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:go_router/go_router.dart';
@@ -28,19 +29,58 @@ class GroupGamePage extends StatefulWidget {
 
 class _GroupGamePageState extends State<GroupGamePage> {
   final TextEditingController _questionController = TextEditingController();
+  final List<TextEditingController> _optionControllers =
+      List.generate(4, (_) => TextEditingController());
   final TextEditingController _interestsController = TextEditingController();
+  final TextEditingController _answerController = TextEditingController();
+  final FocusNode _interestsFocus = FocusNode();
+  int? _correctOptionIndex;
 
   @override
   void initState() {
     super.initState();
     _questionController.addListener(() => setState(() {}));
+    _answerController.addListener(() => setState(() {}));
   }
 
   @override
   void dispose() {
     _questionController.dispose();
+    for (final c in _optionControllers) {
+      c.dispose();
+    }
     _interestsController.dispose();
+    _answerController.dispose();
+    _interestsFocus.dispose();
     super.dispose();
+  }
+
+  Future<void> _saveInterests() async {
+    try {
+      await context.read<GroupGameCubit>().setInterestsForSelf(
+            _interestsController.text,
+          );
+      if (!mounted) return;
+      _interestsFocus.unfocus();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Interests saved',
+            style: GoogleFonts.manrope(),
+          ),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            e.toString(),
+            style: GoogleFonts.manrope(),
+          ),
+        ),
+      );
+    }
   }
 
   @override
@@ -57,9 +97,10 @@ class _GroupGamePageState extends State<GroupGamePage> {
                 SnackBar(content: Text(state.message)),
               );
             }
-            if (state is GroupGameLoaded) {
+            if (state is GroupGameLoaded && uid != null) {
               final mine = state.game.interestsByUserId[uid] ?? '';
-              if (_interestsController.text != mine && mine.isNotEmpty) {
+              // Avoid overwriting while the user is typing; sync when unfocused or empty local + server has data.
+              if (!_interestsFocus.hasFocus && _interestsController.text != mine) {
                 _interestsController.text = mine;
               }
             }
@@ -181,7 +222,9 @@ class _GroupGamePageState extends State<GroupGamePage> {
         const SizedBox(height: 16),
         if (game.status == GroupGameStatus.setup) ...[
           Text(
-            'Everyone agrees to the amount, then the host continues to the payment step.',
+            isHost
+                ? 'Turn on the switch for each member once they agree. Others can tap Agree on their own phone.'
+                : 'Everyone agrees to the amount, then the host continues to the payment step.',
             style: GoogleFonts.manrope(
               fontSize: 13,
               color: AppColors.stemGreyText,
@@ -209,7 +252,15 @@ class _GroupGamePageState extends State<GroupGamePage> {
                       ),
                     ),
                   ),
-                  if (id == uid && !agreed)
+                  if (isHost)
+                    Switch(
+                      value: agreed,
+                      activeThumbColor: AppColors.stemEmerald,
+                      onChanged: (v) => context
+                          .read<GroupGameCubit>()
+                          .hostSetMemberAmountAgreed(id, v),
+                    )
+                  else if (id == uid && !agreed)
                     TextButton(
                       onPressed: () =>
                           context.read<GroupGameCubit>().agreeToAmount(),
@@ -237,6 +288,7 @@ class _GroupGamePageState extends State<GroupGamePage> {
           const SizedBox(height: 8),
           TextField(
             controller: _interestsController,
+            focusNode: _interestsFocus,
             maxLines: 2,
             style: const TextStyle(color: AppColors.stemLightText),
             decoration: InputDecoration(
@@ -255,9 +307,7 @@ class _GroupGamePageState extends State<GroupGamePage> {
           AppButton(
             text: 'Save interests',
             height: 44,
-            onPressed: () => context.read<GroupGameCubit>().setInterestsForSelf(
-                  _interestsController.text,
-                ),
+            onPressed: _saveInterests,
           ),
           if (isHost) ...[
             const SizedBox(height: 20),
@@ -399,31 +449,151 @@ class _GroupGamePageState extends State<GroupGamePage> {
             ),
           ),
           if (game.currentTurnUserId() == uid) ...[
+            Builder(builder: (context) {
+              final last = game.lastQuestion();
+              final needsAnswerFirst = last != null &&
+                  (last['answererId']?.toString() == uid) &&
+                  ((last['answerText']?.toString().trim() ?? '').isEmpty);
+              return Column(
+                children: [
             const SizedBox(height: 16),
-            TextField(
-              controller: _questionController,
-              maxLines: 3,
-              style: const TextStyle(color: AppColors.stemLightText),
-              decoration: InputDecoration(
-                labelText: 'Your question',
-                labelStyle: const TextStyle(color: AppColors.stemMutedText),
-                filled: true,
-                fillColor: AppColors.stemInputBg,
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              children: [
-                Expanded(
-                  child: AppButton(
-                    text: aiGenerating ? '...' : 'AI (favorite)',
-                    height: 44,
-                    onPressed: aiGenerating
+            Builder(builder: (context) {
+              final last = game.lastQuestion();
+              final needsAnswer = last != null &&
+                  (last['answererId']?.toString() == uid) &&
+                  ((last['answerText']?.toString().trim() ?? '').isEmpty);
+              final askedAt = last?['askedAt'];
+              DateTime? asked;
+              if (askedAt is Timestamp) asked = askedAt.toDate();
+              final deadline = asked?.add(const Duration(minutes: 5));
+              final secondsLeft = deadline == null
+                  ? 0
+                  : deadline.difference(DateTime.now()).inSeconds;
+              final showTimer = needsAnswer && deadline != null;
+              final timeStr = () {
+                final s = secondsLeft.clamp(0, 300);
+                final mm = (s ~/ 60).toString().padLeft(2, '0');
+                final ss = (s % 60).toString().padLeft(2, '0');
+                return '$mm:$ss';
+              }();
+
+              if (!needsAnswer) return const SizedBox.shrink();
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Answer the previous question first',
+                    style: GoogleFonts.manrope(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w700,
+                      color: AppColors.stemLightText,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    last['text']?.toString() ?? '',
+                    style: GoogleFonts.manrope(
+                      fontSize: 14,
+                      color: AppColors.stemMutedText,
+                    ),
+                  ),
+                  if (last['options'] is List) ...[
+                    const SizedBox(height: 8),
+                    ...(last['options'] as List)
+                        .map(
+                          (o) => Padding(
+                            padding: const EdgeInsets.only(bottom: 4),
+                            child: Text(
+                              '- ${o.toString()}',
+                              style: GoogleFonts.manrope(
+                                fontSize: 13,
+                                color: AppColors.stemMutedText,
+                              ),
+                            ),
+                          ),
+                        )
+                        .toList(),
+                  ],
+                  if (showTimer) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Time left: $timeStr',
+                      style: GoogleFonts.manrope(
+                        fontSize: 12,
+                        color: AppColors.stemEmerald,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 12),
+                  TextField(
+                    controller: _answerController,
+                    maxLines: 2,
+                    style: const TextStyle(color: AppColors.stemLightText),
+                    decoration: InputDecoration(
+                      labelText: 'Your answer',
+                      labelStyle: const TextStyle(color: AppColors.stemMutedText),
+                      filled: true,
+                      fillColor: AppColors.stemInputBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                  const SizedBox(height: 12),
+                  AppButton(
+                    text: 'Submit answer',
+                    onPressed: _answerController.text.trim().isEmpty
                         ? null
                         : () async {
+                            await context.read<GroupGameCubit>().submitAnswer(
+                                  answerText: _answerController.text,
+                                );
+                            if (mounted) _answerController.clear();
+                          },
+                  ),
+                ],
+              );
+            }),
+            if (!needsAnswerFirst) ...[
+              const SizedBox(height: 16),
+              TextField(
+                controller: _questionController,
+                maxLines: 3,
+                style: const TextStyle(color: AppColors.stemLightText),
+                decoration: InputDecoration(
+                  labelText: 'Your question',
+                  labelStyle: const TextStyle(color: AppColors.stemMutedText),
+                  filled: true,
+                  fillColor: AppColors.stemInputBg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                children: [
+                  Expanded(
+                    child: AppButton(
+                      text: aiGenerating ? '...' : 'AI (favorite)',
+                      height: 44,
+                      onPressed: aiGenerating
+                          ? null
+                          : () async {
+                            final last = game.lastQuestion();
+                            final needsAnswer = last != null &&
+                                (last['answererId']?.toString() == uid) &&
+                                ((last['answerText']?.toString().trim() ?? '').isEmpty);
+                            if (needsAnswer) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Answer the previous question first'),
+                                ),
+                              );
+                              return;
+                            }
                             try {
                               final q = await context
                                   .read<GroupGameCubit>()
@@ -438,17 +608,29 @@ class _GroupGamePageState extends State<GroupGamePage> {
                                 );
                               }
                             }
-                          },
+                            },
+                    ),
                   ),
-                ),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: AppButton(
-                    text: aiGenerating ? '...' : 'AI (random)',
-                    height: 44,
-                    onPressed: aiGenerating
-                        ? null
-                        : () async {
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: AppButton(
+                      text: aiGenerating ? '...' : 'AI (random)',
+                      height: 44,
+                      onPressed: aiGenerating
+                          ? null
+                          : () async {
+                            final last = game.lastQuestion();
+                            final needsAnswer = last != null &&
+                                (last['answererId']?.toString() == uid) &&
+                                ((last['answerText']?.toString().trim() ?? '').isEmpty);
+                            if (needsAnswer) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text('Answer the previous question first'),
+                                ),
+                              );
+                              return;
+                            }
                             try {
                               final q = await context
                                   .read<GroupGameCubit>()
@@ -463,21 +645,82 @@ class _GroupGamePageState extends State<GroupGamePage> {
                                 );
                               }
                             }
-                          },
+                            },
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              ...List.generate(4, (i) {
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: TextField(
+                    controller: _optionControllers[i],
+                    style: const TextStyle(color: AppColors.stemLightText),
+                    decoration: InputDecoration(
+                      labelText: 'Option ${i + 1}',
+                      labelStyle: const TextStyle(color: AppColors.stemMutedText),
+                      filled: true,
+                      fillColor: AppColors.stemInputBg,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onChanged: (_) => setState(() {}),
+                  ),
+                );
+              }),
+              const SizedBox(height: 4),
+              DropdownButtonFormField<int>(
+                value: _correctOptionIndex,
+                decoration: InputDecoration(
+                  labelText: 'Correct option',
+                  labelStyle: const TextStyle(color: AppColors.stemMutedText),
+                  filled: true,
+                  fillColor: AppColors.stemInputBg,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-              ],
-            ),
-            const SizedBox(height: 12),
-            AppButton(
-              text: 'Submit question',
-              onPressed: _questionController.text.trim().isEmpty
-                  ? null
-                  : () async {
-                      await context.read<GroupGameCubit>().submitQuestion();
-                      if (mounted) _questionController.clear();
-                    },
-            ),
+                dropdownColor: AppColors.stemCard,
+                style: GoogleFonts.manrope(color: AppColors.stemLightText),
+                items: List.generate(
+                  4,
+                  (i) => DropdownMenuItem<int>(
+                    value: i,
+                    child: Text('Option ${i + 1}'),
+                  ),
+                ),
+                onChanged: (v) => setState(() => _correctOptionIndex = v),
+              ),
+              const SizedBox(height: 12),
+              AppButton(
+                text: 'Submit question',
+                onPressed: _questionController.text.trim().isEmpty ||
+                        _correctOptionIndex == null ||
+                        _optionControllers.any((c) => c.text.trim().isEmpty)
+                    ? null
+                    : () async {
+                        await context.read<GroupGameCubit>().submitQuestion(
+                              questionText: _questionController.text,
+                              options: _optionControllers
+                                  .map((c) => c.text.trim())
+                                  .toList(),
+                              correctOptionIndex: _correctOptionIndex!,
+                            );
+                        if (mounted) {
+                          _questionController.clear();
+                          for (final c in _optionControllers) {
+                            c.clear();
+                          }
+                          setState(() => _correctOptionIndex = null);
+                        }
+                      },
+              ),
+            ],
+                ],
+              );
+            }),
           ],
         ],
         if (game.status == GroupGameStatus.completed) ...[

@@ -29,6 +29,14 @@ abstract class GroupGameRemoteDataSource {
     required String gameId,
     required String userId,
   });
+
+  /// Host can set any member; a member may only set [agreed] to true for themselves (or host toggles anyone).
+  Future<void> setAmountAgreedForMember({
+    required String groupId,
+    required String gameId,
+    required String memberUserId,
+    required bool agreed,
+  });
   Future<void> setPaid({
     required String groupId,
     required String gameId,
@@ -53,6 +61,15 @@ abstract class GroupGameRemoteDataSource {
     required String groupId,
     required String gameId,
     required String userId,
+    required String questionText,
+    required List<String> options,
+    required int correctOptionIndex,
+  });
+  Future<void> submitAnswer({
+    required String groupId,
+    required String gameId,
+    required String userId,
+    required String answerText,
   });
   Future<void> setWinners({
     required String groupId,
@@ -131,6 +148,7 @@ class GroupGameRemoteDataSourceImpl implements GroupGameRemoteDataSource {
       memberOrder: List<String>.from(memberOrder),
       currentTurnIndex: 0,
       questionCount: 0,
+      questions: const [],
       interestsByUserId: {},
       amountAgreedBy: agreed,
       payments: pays,
@@ -176,8 +194,40 @@ class GroupGameRemoteDataSourceImpl implements GroupGameRemoteDataSource {
     required String gameId,
     required String userId,
   }) async {
+    await setAmountAgreedForMember(
+      groupId: groupId,
+      gameId: gameId,
+      memberUserId: userId,
+      agreed: true,
+    );
+  }
+
+  @override
+  Future<void> setAmountAgreedForMember({
+    required String groupId,
+    required String gameId,
+    required String memberUserId,
+    required bool agreed,
+  }) async {
+    final uid = _auth.currentUser?.uid;
+    if (uid == null) throw Exception('Not signed in');
+    final game = await getGame(groupId, gameId);
+    if (game == null) throw Exception('Game not found');
+    if (game.status != GroupGameStatus.setup) {
+      throw Exception('Amount agreement is only available during setup');
+    }
+    if (!game.memberOrder.contains(memberUserId)) {
+      throw Exception('That user is not in this game');
+    }
+    final isHost = uid == game.hostId;
+    if (memberUserId != uid && !isHost) {
+      throw Exception('Only the host can record agreement for other members');
+    }
+    if (memberUserId == uid && !agreed && !isHost) {
+      throw Exception('Ask the host to change your agreement');
+    }
     await _gamesCol(groupId).doc(gameId).update({
-      'amountAgreedBy.$userId': true,
+      'amountAgreedBy.$memberUserId': agreed,
       'updatedAt': FieldValue.serverTimestamp(),
     });
   }
@@ -257,6 +307,9 @@ class GroupGameRemoteDataSourceImpl implements GroupGameRemoteDataSource {
     required String groupId,
     required String gameId,
     required String userId,
+    required String questionText,
+    required List<String> options,
+    required int correctOptionIndex,
   }) async {
     await _firestore.runTransaction((tx) async {
       final ref = _gamesCol(groupId).doc(gameId);
@@ -273,13 +326,50 @@ class GroupGameRemoteDataSourceImpl implements GroupGameRemoteDataSource {
       if (turn != userId) {
         throw Exception('Not your turn');
       }
-      final nextCount = g.questionCount + 1;
+      final q = questionText.trim();
+      if (q.isEmpty) throw Exception('Question cannot be empty');
+      final cleanedOptions = options.map((e) => e.trim()).toList();
+      if (cleanedOptions.length != 4 || cleanedOptions.any((e) => e.isEmpty)) {
+        throw Exception('Add exactly 4 non-empty options');
+      }
+      if (correctOptionIndex < 0 || correctOptionIndex >= 4) {
+        throw Exception('Select a correct option');
+      }
+
+      // Must answer previous question before asking a new one.
+      if (g.questionCount > 0 && g.questions.isNotEmpty) {
+        final last = g.questions.last;
+        final expectedAnswerer = last['answererId']?.toString();
+        final ans = last['answerText']?.toString().trim() ?? '';
+        if (expectedAnswerer == userId && ans.isEmpty) {
+          throw Exception('Answer the previous question before asking your question');
+        }
+      }
+
+      final now = Timestamp.now();
       final len = g.memberOrder.isEmpty ? 1 : g.memberOrder.length;
       final nextIndex = (g.currentTurnIndex + 1) % len;
+      final nextAnswererId = g.memberOrder.isEmpty ? '' : g.memberOrder[nextIndex];
+      final nextCount = g.questionCount + 1;
+
+      final nextQuestions = List<Map<String, dynamic>>.from(g.questions);
+      nextQuestions.add({
+        'index': g.questionCount,
+        'askerId': userId,
+        'text': q,
+        'options': cleanedOptions,
+        'correctOptionIndex': correctOptionIndex,
+        'correctAnswerText': cleanedOptions[correctOptionIndex],
+        'askedAt': now,
+        'answererId': nextAnswererId,
+        'answerText': '',
+        'answeredAt': null,
+      });
       if (nextCount >= 10) {
         tx.update(ref, {
           'questionCount': 10,
           'currentTurnIndex': nextIndex,
+          'questions': nextQuestions,
           'status': GroupGameModel.statusToString(GroupGameStatus.completed),
           'updatedAt': FieldValue.serverTimestamp(),
         });
@@ -287,9 +377,50 @@ class GroupGameRemoteDataSourceImpl implements GroupGameRemoteDataSource {
         tx.update(ref, {
           'questionCount': nextCount,
           'currentTurnIndex': nextIndex,
+          'questions': nextQuestions,
           'updatedAt': FieldValue.serverTimestamp(),
         });
       }
+    });
+  }
+
+  @override
+  Future<void> submitAnswer({
+    required String groupId,
+    required String gameId,
+    required String userId,
+    required String answerText,
+  }) async {
+    final a = answerText.trim();
+    if (a.isEmpty) throw Exception('Answer cannot be empty');
+    await _firestore.runTransaction((tx) async {
+      final ref = _gamesCol(groupId).doc(gameId);
+      final snap = await tx.get(ref);
+      if (!snap.exists) throw Exception('Game not found');
+      final g = GroupGameModel.fromFirestore(snap, groupId: groupId);
+      if (g.status != GroupGameStatus.active) {
+        throw Exception('Game is not active');
+      }
+      if (!g.allMembersPaid()) {
+        throw Exception('All members must complete payment first');
+      }
+      final turn = g.currentTurnUserId();
+      if (turn != userId) throw Exception('Not your turn');
+      if (g.questions.isEmpty) throw Exception('No question to answer');
+      final last = Map<String, dynamic>.from(g.questions.last);
+      final expected = last['answererId']?.toString();
+      if (expected != userId) throw Exception('No pending answer for you');
+      final existing = last['answerText']?.toString().trim() ?? '';
+      if (existing.isNotEmpty) return;
+
+      last['answerText'] = a;
+      last['answeredAt'] = Timestamp.now();
+      final nextQuestions = List<Map<String, dynamic>>.from(g.questions);
+      nextQuestions[nextQuestions.length - 1] = last;
+      tx.update(ref, {
+        'questions': nextQuestions,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
     });
   }
 

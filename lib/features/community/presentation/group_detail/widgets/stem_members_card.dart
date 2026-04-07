@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../../../../core/constants/app_colors.dart';
+import '../../../../../../core/constants/app_routes.dart';
 import '../../../../../../data/models/group_model.dart';
 
 /// STEM design: Members card with balance per member, "View all" button.
@@ -28,6 +30,14 @@ class _StemMembersCardState extends State<StemMembersCard> {
   String _displayName(String userId) {
     if (userId == widget.currentUserId) return 'You';
     return userId.length > 8 ? '${userId.substring(0, 8)}...' : userId;
+  }
+
+  void _openProfile(BuildContext context, String userId) {
+    if (userId == widget.currentUserId) {
+      context.push(AppRoutes.profile);
+    } else {
+      context.push('${AppRoutes.userProfile}/$userId');
+    }
   }
 
   @override
@@ -84,61 +94,68 @@ class _StemMembersCardState extends State<StemMembersCard> {
 
               return Padding(
                 padding: const EdgeInsets.only(bottom: 16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Row(
+                child: InkWell(
+                  onTap: () => _openProfile(context, e.key),
+                  borderRadius: BorderRadius.circular(16),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 6),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        CircleAvatar(
-                          radius: 20,
-                          backgroundColor: AppColors.stemSurface,
-                          child: Text(
-                            _displayName(e.key).substring(0, 1).toUpperCase(),
-                            style: GoogleFonts.manrope(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w700,
-                              color: AppColors.stemLightText,
-                            ),
-                          ),
-                        ),
-                        const SizedBox(width: 12),
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
+                        Row(
                           children: [
-                            Text(
-                              _displayName(e.key),
-                              style: GoogleFonts.manrope(
-                                fontSize: 14,
-                                fontWeight: FontWeight.w700,
-                                color: AppColors.stemLightText,
+                            CircleAvatar(
+                              radius: 20,
+                              backgroundColor: AppColors.stemSurface,
+                              child: Text(
+                                _displayName(e.key).substring(0, 1).toUpperCase(),
+                                style: GoogleFonts.manrope(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppColors.stemLightText,
+                                ),
                               ),
                             ),
-                            Text(
-                              member.role.toUpperCase(),
-                              style: GoogleFonts.manrope(
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
-                                color: isCurrentUser
-                                    ? AppColors.stemEmerald
-                                    : AppColors.stemMutedText,
-                                letterSpacing: -0.5,
-                              ),
+                            const SizedBox(width: 12),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  _displayName(e.key),
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w700,
+                                    color: AppColors.stemLightText,
+                                  ),
+                                ),
+                                Text(
+                                  member.role.toUpperCase(),
+                                  style: GoogleFonts.manrope(
+                                    fontSize: 10,
+                                    fontWeight: FontWeight.w500,
+                                    color: isCurrentUser
+                                        ? AppColors.stemEmerald
+                                        : AppColors.stemMutedText,
+                                    letterSpacing: -0.5,
+                                  ),
+                                ),
+                              ],
                             ),
                           ],
                         ),
+                        Text(
+                          '${balance >= 0 ? '+' : ''}${widget.currency}${balance.abs().toStringAsFixed(0)}',
+                          style: GoogleFonts.manrope(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w700,
+                            color: balance >= 0
+                                ? AppColors.stemEmerald
+                                : AppColors.stemOweColor,
+                          ),
+                        ),
                       ],
                     ),
-                    Text(
-                      '${balance >= 0 ? '+' : ''}${widget.currency}${balance.abs().toStringAsFixed(0)}',
-                      style: GoogleFonts.manrope(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w700,
-                        color: balance >= 0
-                            ? AppColors.stemEmerald
-                            : AppColors.stemOweColor,
-                      ),
-                    ),
-                  ],
+                  ),
                 ),
               );
             },

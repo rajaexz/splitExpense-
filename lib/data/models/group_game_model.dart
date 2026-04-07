@@ -21,6 +21,9 @@ class GroupGameModel {
   final int currentTurnIndex;
   /// Total questions asked (0–10).
   final int questionCount;
+  /// In-game questions (max 10), with optional answers.
+  /// Stored as a list of maps to keep Firestore writes simple.
+  final List<Map<String, dynamic>> questions;
   /// Optional interests/hobbies per user for AI favorite mode (per-game).
   final Map<String, String> interestsByUserId;
   final Map<String, bool> amountAgreedBy;
@@ -41,6 +44,7 @@ class GroupGameModel {
     required this.memberOrder,
     required this.currentTurnIndex,
     required this.questionCount,
+    required this.questions,
     required this.interestsByUserId,
     required this.amountAgreedBy,
     required this.payments,
@@ -86,6 +90,7 @@ class GroupGameModel {
     final createdAt = data['createdAt'];
     final updatedAt = data['updatedAt'];
     final order = data['memberOrder'];
+    final rawQuestions = data['questions'];
     return GroupGameModel(
       id: doc.id,
       groupId: groupId,
@@ -98,6 +103,12 @@ class GroupGameModel {
           : <String>[],
       currentTurnIndex: (data['currentTurnIndex'] as num?)?.toInt() ?? 0,
       questionCount: (data['questionCount'] as num?)?.toInt() ?? 0,
+      questions: rawQuestions is List
+          ? rawQuestions
+              .whereType<Map>()
+              .map((m) => Map<String, dynamic>.from(m as Map))
+              .toList()
+          : const <Map<String, dynamic>>[],
       interestsByUserId: Map<String, String>.from(
         (data['interestsByUserId'] as Map?)?.map(
               (k, v) => MapEntry(k.toString(), v?.toString() ?? ''),
@@ -134,6 +145,7 @@ class GroupGameModel {
       'memberOrder': memberOrder,
       'currentTurnIndex': currentTurnIndex,
       'questionCount': questionCount,
+      'questions': questions,
       'interestsByUserId': interestsByUserId,
       'amountAgreedBy': amountAgreedBy,
       'payments': payments,
@@ -155,6 +167,7 @@ class GroupGameModel {
     List<String>? memberOrder,
     int? currentTurnIndex,
     int? questionCount,
+    List<Map<String, dynamic>>? questions,
     Map<String, String>? interestsByUserId,
     Map<String, bool>? amountAgreedBy,
     Map<String, bool>? payments,
@@ -174,6 +187,7 @@ class GroupGameModel {
       memberOrder: memberOrder ?? this.memberOrder,
       currentTurnIndex: currentTurnIndex ?? this.currentTurnIndex,
       questionCount: questionCount ?? this.questionCount,
+      questions: questions ?? this.questions,
       interestsByUserId: interestsByUserId ?? this.interestsByUserId,
       amountAgreedBy: amountAgreedBy ?? this.amountAgreedBy,
       payments: payments ?? this.payments,
@@ -205,5 +219,10 @@ class GroupGameModel {
       if (payments[uid] != true) return false;
     }
     return true;
+  }
+
+  Map<String, dynamic>? lastQuestion() {
+    if (questions.isEmpty) return null;
+    return questions.last;
   }
 }

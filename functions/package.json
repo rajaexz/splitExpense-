@@ -2,23 +2,28 @@
   "name": "jobcrak-functions",
   "description": "Cloud Functions for JobCrak FCM push notifications",
   "scripts": {
-    "build": "tsc",
-    "serve": "npm run build && firebase emulators:start --only functions",
-    "shell": "npm run build && firebase functions:shell",
+    "postinstall": "node scripts/fix-bin-permissions.cjs",
+    "firebase": "npx firebase",
+    "build": "node ./node_modules/typescript/bin/tsc",
+    "serve": "npm run build && npx firebase emulators:start --only functions",
+    "shell": "npm run build && npx firebase functions:shell",
     "start": "npm run shell",
-    "deploy": "firebase deploy --only functions",
-    "logs": "firebase functions:log"
+    "deploy": "npx firebase deploy --only functions",
+    "logs": "npx firebase functions:log",
+    "emulators": "npm run build && npx firebase emulators:start --only functions,firestore,auth,storage"
   },
   "engines": {
-    "node": "18"
+    "node": "20"
   },
   "main": "lib/index.js",
   "dependencies": {
     "@google/generative-ai": "^0.21.0",
+    "dotenv": "^16.6.1",
     "firebase-admin": "^11.11.0",
     "firebase-functions": "^4.5.0"
   },
   "devDependencies": {
+    "firebase-tools": "^13.29.0",
     "typescript": "^5.0.0"
   },
   "private": true

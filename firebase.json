@@ -8,5 +8,24 @@
   },
   "functions": {
     "source": "functions"
+  },
+  "emulators": {
+    "auth": {
+      "port": 56274
+    },
+    "functions": {
+      "port": 56275
+    },
+    "firestore": {
+      "port": 56273
+    },
+    "storage": {
+      "port": 56276
+    },
+    "ui": {
+      "enabled": true,
+      "port": 56277
+    },
+    "singleProjectMode": true
   }
 }

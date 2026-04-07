@@ -8,6 +8,7 @@ import '../../features/community/presentation/auth/register_page.dart';
 import '../../features/community/presentation/auth/otp_verification_page.dart';
 import '../../application/auth/auth_cubit.dart';
 import '../../../features/community/presentation/home/home_page.dart';
+import '../../../features/community/presentation/home/game_groups_page.dart';
 import '../../../features/community/presentation/create_group/create_group_page.dart';
 import '../../../features/community/presentation/location_search/location_search_page.dart';
 import '../../../features/community/presentation/group_detail/group_detail_page.dart';
@@ -185,6 +186,20 @@ class AppRouter {
           );
         },
       ),
+
+      GoRoute(
+        path: AppRoutes.gameGroups,
+        name: 'game-groups',
+        builder: (context, state) {
+          return MultiBlocProvider(
+            providers: [
+              BlocProvider(create: (context) => di.sl<GroupCubit>()),
+              BlocProvider(create: (context) => di.sl<ExpenseCubit>()),
+            ],
+            child: const GameGroupsPage(),
+          );
+        },
+      ),
       
       // Location Search
       GoRoute(
@@ -198,9 +213,11 @@ class AppRouter {
         path: AppRoutes.createGroup,
         name: 'create-group',
         builder: (context, state) {
+          final extra = state.extra as Map<String, dynamic>?;
+          final initialCategory = extra?['initialCategory'] as String?;
           return BlocProvider(
             create: (context) => di.sl<GroupCubit>(),
-            child: const CreateGroupPage(),
+            child: CreateGroupPage(initialCategory: initialCategory),
           );
         },
       ),

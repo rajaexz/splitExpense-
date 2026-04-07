@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
 import 'package:google_sign_in/google_sign_in.dart';
+import '../../core/config/firebase_emulator.dart';
 import '../models/user_model.dart';
 
 abstract class AuthRemoteDataSource {
@@ -73,10 +74,12 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<void> logout() async {
     try {
-      await Future.wait([
-        _firebaseAuth.signOut(),
-        _googleSignIn.signOut(),
-      ]);
+      await _firebaseAuth.signOut();
+      // On some Android emulator images, Google Play broker throws SecurityException.
+      // Ignore Google sign-out failure if Play services is not available.
+      try {
+        await _googleSignIn.signOut();
+      } catch (_) {}
     } catch (e) {
       throw Exception('Logout failed: ${e.toString()}');
     }
@@ -92,6 +95,11 @@ class AuthRemoteDataSourceImpl implements AuthRemoteDataSource {
   @override
   Future<UserModel> signInWithGoogle() async {
     try {
+      if (kUseFirebaseEmulator) {
+        throw Exception(
+          'Google Sign-In is disabled in emulator mode. Use email/phone login for local testing.',
+        );
+      }
       // Trigger the authentication flow
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       

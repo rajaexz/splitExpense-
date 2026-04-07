@@ -1,6 +1,8 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'firebase_options.dart';
 
@@ -11,6 +13,7 @@ import 'core/theme/app_theme.dart';
 import 'core/utils/theme_cubit.dart';
 import 'core/utils/app_logger.dart';
 import 'core/routing/app_router.dart';
+import 'core/config/firebase_emulator.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -23,6 +26,13 @@ void main() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      await connectFirebaseEmulatorsIfEnabled();
+      if (kUseFirebaseEmulator) {
+        AppLogger.info(
+          'Using Firebase Emulator Suite (local). Start: cd functions && npm run emulators',
+          tag: 'FIREBASE',
+        );
+      }
     }
     firebaseInitialized = true;
     AppLogger.success('Firebase initialized successfully', tag: 'FIREBASE');
@@ -41,16 +51,33 @@ void main() async {
     AppLogger.info('OR run: flutterfire configure (easiest method)', tag: 'FIREBASE');
     AppLogger.warning('App will continue but Firebase features (auth) won\'t work', tag: 'FIREBASE');
   }
-  
+
+  // Registers an App Check provider (stops "No AppCheckProvider installed" warnings for callable/Storage).
+  try {
+    if (Firebase.apps.isNotEmpty) {
+      final useDebugProvider = kDebugMode || kUseFirebaseEmulator;
+      await FirebaseAppCheck.instance.activate(
+        androidProvider:
+            useDebugProvider ? AndroidProvider.debug : AndroidProvider.playIntegrity,
+        appleProvider:
+            useDebugProvider ? AppleProvider.debug : AppleProvider.appAttest,
+      );
+    }
+  } catch (e) {
+    AppLogger.warning('Firebase App Check: $e', tag: 'FIREBASE');
+  }
+
   AppLogger.debug('Initializing dependency injection...', tag: 'DI');
   await di.init();
   AppLogger.success('Dependency injection initialized', tag: 'DI');
 
-  if (firebaseInitialized) {
+  if (firebaseInitialized && !kUseFirebaseEmulator) {
     FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
   }
 
-  if (firebaseInitialized && di.sl.isRegistered<FcmService>()) {
+  if (firebaseInitialized &&
+      !kUseFirebaseEmulator &&
+      di.sl.isRegistered<FcmService>()) {
     await di.sl<FcmService>().initialize();
   }
   

@@ -25,9 +25,10 @@ class OtpVerificationPage extends StatefulWidget {
 }
 
 class _OtpVerificationPageState extends State<OtpVerificationPage> {
+  static const int _otpLength = 6;
   final List<TextEditingController> _controllers =
-      List.generate(4, (_) => TextEditingController());
-  final List<FocusNode> _focusNodes = List.generate(4, (_) => FocusNode());
+      List.generate(_otpLength, (_) => TextEditingController());
+  final List<FocusNode> _focusNodes = List.generate(_otpLength, (_) => FocusNode());
   int _resendSeconds = 45;
   bool _canResend = false;
   late String _verificationId;
@@ -57,8 +58,12 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
 
   @override
   void dispose() {
-    for (final c in _controllers) c.dispose();
-    for (final f in _focusNodes) f.dispose();
+    for (final c in _controllers) {
+      c.dispose();
+    }
+    for (final f in _focusNodes) {
+      f.dispose();
+    }
     super.dispose();
   }
 
@@ -66,10 +71,10 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
       _controllers.map((c) => c.text).join();
 
   void _appendDigit(String digit) {
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < _otpLength; i++) {
       if (_controllers[i].text.isEmpty) {
         _controllers[i].text = digit;
-        if (i < 3) _focusNodes[i + 1].requestFocus();
+        if (i < _otpLength - 1) _focusNodes[i + 1].requestFocus();
         setState(() {});
         return;
       }
@@ -77,7 +82,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   }
 
   void _backspace() {
-    for (int i = 3; i >= 0; i--) {
+    for (int i = _otpLength - 1; i >= 0; i--) {
       if (_controllers[i].text.isNotEmpty) {
         _controllers[i].clear();
         if (i > 0) _focusNodes[i - 1].requestFocus();
@@ -88,7 +93,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
   }
 
   void _verify() {
-    if (_otp.length != 4) return;
+    if (_otp.length != _otpLength) return;
     context.read<AuthCubit>().signInWithPhoneCredential(
           _verificationId,
           _otp,
@@ -173,7 +178,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                             ),
                             children: [
                               const TextSpan(
-                                text: 'Enter the 4-digit code sent to ',
+                                text: 'Enter the 6-digit code sent to ',
                               ),
                               TextSpan(
                                 text: '+91\n',
@@ -198,7 +203,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                         // OTP inputs
                         Row(
                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                          children: List.generate(4, (i) {
+                          children: List.generate(_otpLength, (i) {
                             final hasValue = _controllers[i].text.isNotEmpty;
                             final isActive = _focusNodes[i].hasFocus;
                             return SizedBox(
@@ -250,7 +255,8 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                                   ),
                                 ),
                                 onChanged: (_) {
-                                  if (_controllers[i].text.isNotEmpty && i < 3) {
+                                  if (_controllers[i].text.isNotEmpty &&
+                                      i < _otpLength - 1) {
                                     _focusNodes[i + 1].requestFocus();
                                   }
                                   setState(() {});
@@ -329,7 +335,7 @@ class _OtpVerificationPageState extends State<OtpVerificationPage> {
                           child: Material(
                             color: Colors.transparent,
                             child: InkWell(
-                              onTap: isLoading || _otp.length != 4
+                              onTap: isLoading || _otp.length != _otpLength
                                   ? null
                                   : _verify,
                               borderRadius: BorderRadius.circular(24),

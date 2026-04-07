@@ -3,8 +3,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 /// Supported currencies for group expenses
 const List<String> kGroupCurrencies = ['PKR', 'INR', 'USD'];
 
-/// Group category: Trip, Home, Couple, Other
-const List<String> kGroupCategories = ['trip', 'home', 'couple', 'other'];
+/// Group category: Trip, Home, Couple, Game, Other
+const List<String> kGroupCategories = ['trip', 'home', 'couple', 'game', 'other'];
 
 class GroupModel {
   final String id;
@@ -25,6 +25,8 @@ class GroupModel {
   final DateTime? tripStartDate;
   final DateTime? tripEndDate;
   final DateTime? settleUpDate;
+  /// Optional default amount for game groups, used by host when starting question game.
+  final double? gamePerPersonAmount;
 
   GroupModel({
     required this.id,
@@ -45,6 +47,7 @@ class GroupModel {
     this.tripStartDate,
     this.tripEndDate,
     this.settleUpDate,
+    this.gamePerPersonAmount,
   });
 
   factory GroupModel.fromFirestore(DocumentSnapshot doc, {Map<String, dynamic>? dataOverride}) {
@@ -78,6 +81,7 @@ class GroupModel {
       tripStartDate: tripStart is Timestamp ? tripStart.toDate() : null,
       tripEndDate: tripEnd is Timestamp ? tripEnd.toDate() : null,
       settleUpDate: settleUp is Timestamp ? settleUp.toDate() : null,
+      gamePerPersonAmount: (data['gamePerPersonAmount'] as num?)?.toDouble(),
     );
   }
 
@@ -100,6 +104,7 @@ class GroupModel {
       if (tripStartDate != null) 'tripStartDate': Timestamp.fromDate(tripStartDate!),
       if (tripEndDate != null) 'tripEndDate': Timestamp.fromDate(tripEndDate!),
       if (settleUpDate != null) 'settleUpDate': Timestamp.fromDate(settleUpDate!),
+      if (gamePerPersonAmount != null) 'gamePerPersonAmount': gamePerPersonAmount,
     };
     return map;
   }
@@ -123,6 +128,7 @@ class GroupModel {
     DateTime? tripStartDate,
     DateTime? tripEndDate,
     DateTime? settleUpDate,
+    double? gamePerPersonAmount,
   }) {
     return GroupModel(
       id: id ?? this.id,
@@ -143,6 +149,7 @@ class GroupModel {
       tripStartDate: tripStartDate ?? this.tripStartDate,
       tripEndDate: tripEndDate ?? this.tripEndDate,
       settleUpDate: settleUpDate ?? this.settleUpDate,
+      gamePerPersonAmount: gamePerPersonAmount ?? this.gamePerPersonAmount,
     );
   }
 }

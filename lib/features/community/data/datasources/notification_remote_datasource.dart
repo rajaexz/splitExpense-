@@ -24,6 +24,7 @@ abstract class NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   });
 
   Future<void> sendGamePaymentReminder({
@@ -31,6 +32,7 @@ abstract class NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   });
 
   Future<void> sendGamePoke({
@@ -38,6 +40,7 @@ abstract class NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   });
 
   Future<void> sendGameWinnerAnnouncement({
@@ -48,6 +51,7 @@ abstract class NotificationRemoteDataSource {
     required String secondName,
     required String thirdName,
     required String gameId,
+    String? body,
   });
 
   Future<void> sendGameCompleteNotification({
@@ -55,6 +59,7 @@ abstract class NotificationRemoteDataSource {
     required String groupName,
     required List<String> memberUserIds,
     required String gameId,
+    String? body,
   });
 }
 
@@ -188,6 +193,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   }) async {
     final ref = _firestore
         .collection('notifications')
@@ -199,7 +205,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       'userId': targetUserId,
       'type': 'game_turn',
       'title': 'Your turn',
-      'body': 'It\'s your turn to ask a question in $groupName.',
+      'body': body ?? 'It\'s your turn to ask a question in $groupName.',
       'data': {
         'groupId': groupId,
         'groupName': groupName,
@@ -216,6 +222,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   }) async {
     final ref = _firestore
         .collection('notifications')
@@ -227,7 +234,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       'userId': targetUserId,
       'type': 'game_payment',
       'title': 'Complete payment',
-      'body':
+      'body': body ??
           'Please complete your payment for the group game in $groupName so everyone can continue.',
       'data': {
         'groupId': groupId,
@@ -245,6 +252,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String groupName,
     required String targetUserId,
     required String gameId,
+    String? body,
   }) async {
     final ref = _firestore
         .collection('notifications')
@@ -256,7 +264,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
       'userId': targetUserId,
       'type': 'game_poke',
       'title': 'Payment nudge',
-      'body':
+      'body': body ??
           'Friendly reminder from $groupName: your share is still waiting. Tap in and save the game!',
       'data': {
         'groupId': groupId,
@@ -277,10 +285,11 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String secondName,
     required String thirdName,
     required String gameId,
+    String? body,
   }) async {
     if (memberUserIds.isEmpty) return;
     final batch = _firestore.batch();
-    final body =
+    final resolvedBody = body ??
         'We have our podium: 1st $firstName, 2nd $secondName, 3rd $thirdName. Thanks for playing!';
     for (final userId in memberUserIds.toSet()) {
       final ref = _firestore
@@ -293,7 +302,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         'userId': userId,
         'type': 'game_winner',
         'title': 'Game complete',
-        'body': body,
+        'body': resolvedBody,
         'data': {
           'groupId': groupId,
           'groupName': groupName,
@@ -312,10 +321,11 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
     required String groupName,
     required List<String> memberUserIds,
     required String gameId,
+    String? body,
   }) async {
     if (memberUserIds.isEmpty) return;
     final batch = _firestore.batch();
-    final body =
+    final resolvedBody = body ??
         'The question game in $groupName is finished. Thank you all for playing!';
     for (final userId in memberUserIds.toSet()) {
       final ref = _firestore
@@ -328,7 +338,7 @@ class NotificationRemoteDataSourceImpl implements NotificationRemoteDataSource {
         'userId': userId,
         'type': 'game_complete',
         'title': 'Thanks everyone',
-        'body': body,
+        'body': resolvedBody,
         'data': {
           'groupId': groupId,
           'groupName': groupName,

@@ -74,19 +74,21 @@ class _HomePageState extends State<HomePage> {
       ),
       floatingActionButton: Padding(
         padding: const EdgeInsets.only(bottom: 72),
-        child: FloatingActionButton.extended(
-          onPressed: () => AddExpenseGroupPicker.show(context, true),
-          backgroundColor: AppColors.primaryGreen,
-          foregroundColor: AppColors.stemButtonText,
-          icon: const Icon(Icons.add, size: 18),
-          label: Text(
-            'Add Expense',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w700,
-              color: AppColors.stemButtonText,
-              letterSpacing: -0.35,
+        child: DecoratedBox(
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF29D890), Color(0xFF10B981)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
+            borderRadius: BorderRadius.circular(16),
+          ),
+          child: FloatingActionButton.extended(
+            onPressed: () => AddExpenseGroupPicker.show(context, true),
+            backgroundColor: Colors.transparent,
+            foregroundColor: AppColors.stemButtonText,
+            elevation: 0,
+            label: const Icon(Icons.add, size: 28),
           ),
         ),
       ),
@@ -126,6 +128,9 @@ class _HomePageState extends State<HomePage> {
 
           final groups = snapshot.data ?? [];
           final filtered = _filterAndSort(groups);
+          final expenseGroups = filtered
+              .where((g) => g.category.toLowerCase() != 'game')
+              .toList();
 
           if (groups.isEmpty) {
             return EmptyGroupsState(isDark: isDark);
@@ -150,7 +155,7 @@ class _HomePageState extends State<HomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Your Groups',
+                          'Expense Groups',
                           style: GoogleFonts.plusJakartaSans(
                             fontSize: 20,
                             fontWeight: FontWeight.w600,
@@ -159,7 +164,7 @@ class _HomePageState extends State<HomePage> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '${filtered.length} Active Collections',
+                          '${expenseGroups.length} Active Collections',
                           style: GoogleFonts.manrope(
                             fontSize: 12,
                             color: AppColors.stemMutedText,
@@ -206,13 +211,14 @@ class _HomePageState extends State<HomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 24),
                 child: Column(
                   children: [
-                    ...filtered.map((g) => StemGroupCard(
+                    ...expenseGroups.map((g) => StemGroupCard(
                           group: g,
                           currentUserId: currentUserId,
                           onTap: () =>
                               context.push('${AppRoutes.groupDetail}/${g.id}'),
                           onMoreTap: () {},
                         )),
+                    const SizedBox(height: 12),
                     _StemCreateGroupButton(
                       onTap: () => context.push(AppRoutes.createGroup),
                     ),
@@ -275,7 +281,7 @@ class _HomePageState extends State<HomePage> {
               context.push(AppRoutes.contacts);
               break;
             case 2:
-              context.push(AppRoutes.sharedWithMe);
+              context.go(AppRoutes.gameGroups);
               break;
             case 3:
               context.push(AppRoutes.profile);
@@ -289,7 +295,7 @@ class _HomePageState extends State<HomePage> {
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.groups), label: 'Groups'),
           BottomNavigationBarItem(icon: Icon(Icons.people), label: 'Friends'),
-          BottomNavigationBarItem(icon: Icon(Icons.photo_library), label: 'Activity'),
+          BottomNavigationBarItem(icon: Icon(Icons.quiz_outlined), label: 'Games'),
           BottomNavigationBarItem(icon: Icon(Icons.person), label: 'Account'),
         ],
       ),
@@ -323,7 +329,9 @@ class _StemIconButton extends StatelessWidget {
 class _StemCreateGroupButton extends StatelessWidget {
   final VoidCallback onTap;
 
-  const _StemCreateGroupButton({required this.onTap});
+  const _StemCreateGroupButton({
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {

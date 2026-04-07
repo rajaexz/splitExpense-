@@ -1,8 +1,11 @@
+import "./loadEnv";
 import * as functions from "firebase-functions";
 import * as admin from "firebase-admin";
 import {GoogleGenerativeAI} from "@google/generative-ai";
 
-const sharedSystem = `You write short text for a friendly group question game inside a split-expense app. Output rules: Return ONLY the required question or message. No title, no quotes, no numbering, no explanation, no markdown. English or Hinglish is fine if natural for the group. Keep it safe for friends or office groups: not offensive, not sexual, not political, not medical/legal advice, no slurs. One line when possible.`;
+const sharedSystem = `You write short text for a friendly turn-based group question game (10 questions total) inside a split-expense app. The game only continues after everyone pays; members take turns asking one question each in circular order.
+
+Output rules: Return ONLY the required question or message — nothing else. No title, no quotes, no numbering, no explanation, no markdown. English or Hinglish is fine if natural for the group. Keep it safe for friends or office groups: not offensive, not sensitive, not sexual, not political, not medical/legal advice, no slurs. One line when possible.`;
 
 function buildUserPrompt(kind: string, data: Record<string, unknown>): string {
   const groupName = (data.groupName as string) || "Group";
@@ -10,10 +13,10 @@ function buildUserPrompt(kind: string, data: Record<string, unknown>): string {
   const interests = (data.interests as string) || "";
   switch (kind) {
     case "question_favorite":
-      return `The player's interests/hobbies or favorite topics (may include Hindi labels like पसंदीदा): ${interests}
-Generate exactly ONE question that relates to these interests. The question must be short, simple, easy to answer in chat, and fun.`;
+      return `Favorite mode: use the player's interests, hobbies, or favorite topics (may include Hindi e.g. पसंदीदा): ${interests}
+Output exactly ONE short question tied to those interests. It must be simple, easy to answer in chat, and fun — not offensive or sensitive.`;
     case "question_random":
-      return `Generate exactly ONE random, fun, engaging question. It must NOT be based on any specific hobbies or interests. Short, simple, easy to answer, suitable for friends or colleagues.`;
+      return `Non-favorite mode: output exactly ONE random, fun, engaging question. It must NOT relate to anyone's hobbies or interests. Short, simple, easy to answer, suitable for friends or office groups — not offensive or sensitive.`;
     case "turn_reminder":
       return `Recipient first name: ${recipientName}. Group name: ${groupName}.
 Write one short message telling them it's their turn to ask a question in the game.`;
@@ -66,7 +69,7 @@ export const generateGameContent = functions.https.onCall(async (data, context) 
   const userPrompt = buildUserPrompt(kind, data as Record<string, unknown>);
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
     systemInstruction: sharedSystem,
   });
   const result = await model.generateContent(userPrompt);

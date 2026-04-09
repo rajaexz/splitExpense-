@@ -41,7 +41,11 @@ Write one friendly message that the game is completed and thank all members.`;
             throw new functions.https.HttpsError("invalid-argument", "Unknown kind");
     }
 }
-exports.generateGameContent = functions.https.onCall(async (data, context) => {
+// Do not require a valid App Check token for this callable — local dev often has
+// Play Integrity / debug-token issues; the handler still checks auth + group membership.
+exports.generateGameContent = functions
+    .runWith({ enforceAppCheck: false })
+    .https.onCall(async (data, context) => {
     var _a;
     if (!context.auth) {
         throw new functions.https.HttpsError("unauthenticated", "Sign in required");
@@ -51,13 +55,25 @@ exports.generateGameContent = functions.https.onCall(async (data, context) => {
     if (!kind || !groupId) {
         throw new functions.https.HttpsError("invalid-argument", "kind and groupId required");
     }
+    console.log("[generateGameContent] invoked", { kind, groupId, uid: context.auth.uid });
     const db = admin.firestore();
     const groupDoc = await db.collection("groups").doc(groupId).get();
     if (!groupDoc.exists) {
         throw new functions.https.HttpsError("not-found", "Group not found");
     }
-    const members = (((_a = groupDoc.data()) === null || _a === void 0 ? void 0 : _a.members) || {});
-    if (!members[context.auth.uid]) {
+    const groupData = (_a = groupDoc.data()) !== null && _a !== void 0 ? _a : {};
+    const members = (groupData.members || {});
+    let isMember = !!members[context.auth.uid];
+    if (!isMember) {
+        const sub = await db
+            .collection("groups")
+            .doc(groupId)
+            .collection("members")
+            .doc(context.auth.uid)
+            .get();
+        isMember = sub.exists;
+    }
+    if (!isMember) {
         throw new functions.https.HttpsError("permission-denied", "Not a group member");
     }
     const apiKey = process.env.GEMINI_API_KEY;
@@ -67,13 +83,21 @@ exports.generateGameContent = functions.https.onCall(async (data, context) => {
     const userPrompt = buildUserPrompt(kind, data);
     const genAI = new generative_ai_1.GoogleGenerativeAI(apiKey);
     const model = genAI.getGenerativeModel({
-        model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+        model: process.env.GEMINI_MODEL || "gemini-flash-latest",
         systemInstruction: sharedSystem,
     });
-    const result = await model.generateContent(userPrompt);
-    const raw = (result.response.text() || "").trim().replace(/^["']|["']$/g, "");
+    let raw = "";
+    try {
+        const result = await model.generateContent(userPrompt);
+        raw = (result.response.text() || "").trim().replace(/^["']|["']$/g, "");
+    }
+    catch (err) {
+        console.error("Gemini generateContent error:", err);
+        const msg = err instanceof Error ? err.message : String(err);
+        throw new functions.https.HttpsError("internal", msg.includes("API key") ? "Invalid or missing Gemini API key" : `AI request failed: ${msg}`);
+    }
     if (!raw) {
-        throw new functions.https.HttpsError("internal", "Empty AI response");
+        throw new functions.https.HttpsError("internal", "Empty AI response (blocked or model returned nothing)");
     }
     return { text: raw };
 });

@@ -10,6 +10,7 @@
     "start": "npm run shell",
     "deploy": "npx firebase deploy --only functions",
     "logs": "npx firebase functions:log",
+    "verify-gemini": "node scripts/verifyGemini.cjs",
     "emulators": "npm run build && npx firebase emulators:start --only functions,firestore,auth,storage"
   },
   "engines": {

@@ -41,7 +41,11 @@ Write one friendly message that the game is completed and thank all members.`;
   }
 }
 
-export const generateGameContent = functions.https.onCall(async (data, context) => {
+// Do not require a valid App Check token for this callable — local dev often has
+// Play Integrity / debug-token issues; the handler still checks auth + group membership.
+export const generateGameContent = functions
+  .runWith({ enforceAppCheck: false })
+  .https.onCall(async (data, context) => {
   if (!context.auth) {
     throw new functions.https.HttpsError("unauthenticated", "Sign in required");
   }
@@ -50,13 +54,25 @@ export const generateGameContent = functions.https.onCall(async (data, context) 
   if (!kind || !groupId) {
     throw new functions.https.HttpsError("invalid-argument", "kind and groupId required");
   }
+  console.log("[generateGameContent] invoked", { kind, groupId, uid: context.auth.uid });
   const db = admin.firestore();
   const groupDoc = await db.collection("groups").doc(groupId).get();
   if (!groupDoc.exists) {
     throw new functions.https.HttpsError("not-found", "Group not found");
   }
-  const members = (groupDoc.data()?.members || {}) as Record<string, unknown>;
-  if (!members[context.auth.uid]) {
+  const groupData = groupDoc.data() ?? {};
+  const members = (groupData.members || {}) as Record<string, unknown>;
+  let isMember = !!members[context.auth.uid];
+  if (!isMember) {
+    const sub = await db
+      .collection("groups")
+      .doc(groupId)
+      .collection("members")
+      .doc(context.auth.uid)
+      .get();
+    isMember = sub.exists;
+  }
+  if (!isMember) {
     throw new functions.https.HttpsError("permission-denied", "Not a group member");
   }
   const apiKey = process.env.GEMINI_API_KEY;
@@ -69,13 +85,23 @@ export const generateGameContent = functions.https.onCall(async (data, context) 
   const userPrompt = buildUserPrompt(kind, data as Record<string, unknown>);
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({
-    model: process.env.GEMINI_MODEL || "gemini-1.5-flash",
+    model: process.env.GEMINI_MODEL || "gemini-flash-latest",
     systemInstruction: sharedSystem,
   });
-  const result = await model.generateContent(userPrompt);
-  const raw = (result.response.text() || "").trim().replace(/^["']|["']$/g, "");
+  let raw = "";
+  try {
+    const result = await model.generateContent(userPrompt);
+    raw = (result.response.text() || "").trim().replace(/^["']|["']$/g, "");
+  } catch (err: unknown) {
+    console.error("Gemini generateContent error:", err);
+    const msg = err instanceof Error ? err.message : String(err);
+    throw new functions.https.HttpsError(
+      "internal",
+      msg.includes("API key") ? "Invalid or missing Gemini API key" : `AI request failed: ${msg}`,
+    );
+  }
   if (!raw) {
-    throw new functions.https.HttpsError("internal", "Empty AI response");
+    throw new functions.https.HttpsError("internal", "Empty AI response (blocked or model returned nothing)");
   }
   return { text: raw };
-});
+  });
